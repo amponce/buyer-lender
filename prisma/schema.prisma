@@ -1,0 +1,80 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String
+  role      String   @default("BUYER")
+  isManager Boolean  @default(false)
+  teamId    Int?     // For team members to reference their team
+  team      User?    @relation("TeamMembers", fields: [teamId], references: [id])
+  members   User[]   @relation("TeamMembers")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  quoteRequests QuoteRequest[] // For buyers
+  quotes        Quote[]        @relation("LenderQuotes") // For lenders
+  messages      Message[]      // Chat messages
+}
+
+model QuoteRequest {
+  id                  Int      @id @default(autoincrement())
+  userId              Int
+  creditScore         Int
+  annualIncome        Float
+  additionalIncome    Float
+  monthlyCarLoan      Float
+  monthlyCreditCard   Float
+  monthlyOtherExpenses Float
+  purchasePrice       Float
+  propertyAddress     String?
+  propertyState       String
+  propertyZipCode     String
+  status              String   @default("PENDING")
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  
+  // Relations
+  user                User     @relation(fields: [userId], references: [id])
+  quotes              Quote[]
+  messages            Message[]
+
+  @@index([userId])
+}
+
+model Quote {
+  id              Int      @id @default(autoincrement())
+  quoteRequestId  Int
+  lenderId        Int
+  interestRate    Float
+  loanTerm        Int
+  monthlyPayment  Float
+  additionalNotes String?
+  status          String   @default("PENDING")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  // Relations
+  quoteRequest    QuoteRequest @relation(fields: [quoteRequestId], references: [id])
+  lender          User     @relation("LenderQuotes", fields: [lenderId], references: [id])
+}
+
+model Message {
+  id            Int      @id @default(autoincrement())
+  requestId     Int
+  senderId      Int
+  content       String
+  createdAt     DateTime @default(now())
+  
+  // Relations
+  quoteRequest  QuoteRequest @relation(fields: [requestId], references: [id])
+  sender        User        @relation(fields: [senderId], references: [id])
+}
