@@ -6,26 +6,51 @@ import { signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
+interface LoginFormData {
+  email: string
+  password: string
+}
+
 export default function LoginForm() {
   const [error, setError] = useState<string>('')
   const router = useRouter()
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm()
+  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<LoginFormData>()
 
-  const onSubmit = async (data: any) => {
+  const onSubmit = async (data: LoginFormData) => {
     try {
+      setError('')
       const result = await signIn('credentials', {
         email: data.email,
         password: data.password,
         redirect: false,
       })
 
-      if (!result?.error) {
-        router.refresh()
-        router.push('/')
-      } else {
+      if (result?.error) {
         setError('Invalid email or password')
+        return
       }
+
+      // Get the session to determine user role
+      const response = await fetch('/api/auth/session')
+      const session = await response.json()
+
+      if (!session?.user) {
+        setError('Failed to get user session')
+        return
+      }
+
+      // Redirect based on role
+      if (session.user.role === 'BUYER') {
+        router.push('/buyer-dashboard')
+      } else if (session.user.role === 'LENDER') {
+        router.push('/lender-dashboard')
+      } else {
+        router.push('/')
+      }
+      
+      router.refresh()
     } catch (error) {
+      console.error('Login error:', error)
       setError('An error occurred during sign in')
     }
   }
@@ -35,7 +60,7 @@ export default function LoginForm() {
       <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           {error && (
-            <div className="text-red-600 text-center text-sm">
+            <div className="bg-red-50 border border-red-200 text-red-600 text-center text-sm p-3 rounded">
               {error}
             </div>
           )}
@@ -57,7 +82,7 @@ export default function LoginForm() {
             />
             {errors.email && (
               <p className="mt-1 text-sm text-red-600">
-                {errors.email.message as string}
+                {errors.email.message}
               </p>
             )}
           </div>
@@ -73,7 +98,7 @@ export default function LoginForm() {
             />
             {errors.password && (
               <p className="mt-1 text-sm text-red-600">
-                {errors.password.message as string}
+                {errors.password.message}
               </p>
             )}
           </div>
@@ -94,6 +119,29 @@ export default function LoginForm() {
             </Link>
           </div>
         </form>
+
+        <div className="mt-6">
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-300" />
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 bg-white text-gray-500">Test Accounts</span>
+            </div>
+          </div>
+          <div className="mt-6 grid grid-cols-2 gap-4 text-sm text-gray-500">
+            <div>
+              <p className="font-medium">Buyer:</p>
+              <p>buyer1@example.com</p>
+              <p>password123</p>
+            </div>
+            <div>
+              <p className="font-medium">Lender:</p>
+              <p>lender1@example.com</p>
+              <p>password123</p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   )

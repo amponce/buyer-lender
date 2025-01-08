@@ -1,50 +1,79 @@
-import { Socket as ClientSocket } from 'socket.io-client';
-import io from 'socket.io-client';
+import { Socket } from 'socket.io-client'
+import io from 'socket.io-client'
 
-let socket: ClientSocket | null = null;
+interface Message {
+  id: string
+  senderId: string
+  content: string
+  timestamp: Date
+}
 
-export const initializeSocket = (userId: string, userType: 'buyer' | 'lender'): ClientSocket | null => {
-  if (typeof window === 'undefined') return null;
+interface QuoteRequest {
+  id: string
+  userId: string
+  creditScore: number
+  annualIncome: number
+  purchasePrice: number
+  propertyState: string
+  status: string
+}
+
+let socket: typeof Socket | null = null
+
+export const initializeSocket = (): typeof Socket | null => {
+  if (typeof window === 'undefined') return null
 
   if (!socket) {
-    const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3001';
-    socket = io(socketUrl, {
-      query: { userId, userType }
-    });
+    const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3001'
+    socket = io(socketUrl)
+
+    socket.on('connect', () => {
+      console.log('Connected to WebSocket server')
+    })
+
+    socket.on('connect_error', (error: Error) => {
+      console.error('WebSocket connection error:', error)
+    })
+
+    socket.on('disconnect', () => {
+      console.log('Disconnected from WebSocket server')
+    })
   }
 
-  return socket;
-};
+  return socket
+}
 
-export const getSocket = (): ClientSocket | null => {
-  if (typeof window === 'undefined') return null;
-  return socket;
-};
+export const getSocket = (): typeof Socket | null => {
+  return socket
+}
 
-// Mock data and functions for when the server is not available
-const mockChatRooms = new Map();
+export const joinChat = (requestId: string, userId: string): void => {
+  if (!socket) return
+  socket.emit('join_chat', { requestId, userId })
+}
 
-export const mockJoinChat = (requestId: string, userId: string, callback: (history: any[]) => void) => {
-  console.log(`Mock: User ${userId} joined chat for request ${requestId}`);
-  const chatHistory = mockChatRooms.get(requestId) || [];
-  callback(chatHistory);
-};
+export const sendMessage = (requestId: string, senderId: string, content: string): void => {
+  if (!socket) return
+  socket.emit('send_message', { requestId, senderId, content })
+}
 
-export const mockSendMessage = (messageData: any, callback: (message: any) => void) => {
-  const { requestId, senderId, content } = messageData;
-  console.log(`Mock: New message in request ${requestId} from ${senderId}`);
-  
-  const message = { 
-    id: Date.now().toString(), 
-    senderId, 
-    content, 
-    timestamp: new Date() 
-  };
+export const onNewMessage = (callback: (message: Message) => void): void => {
+  if (!socket) return
+  socket.on('new_message', callback)
+}
 
-  if (!mockChatRooms.has(requestId)) {
-    mockChatRooms.set(requestId, []);
-  }
-  mockChatRooms.get(requestId).push(message);
+export const onNewQuoteRequest = (callback: (quoteRequest: QuoteRequest) => void): void => {
+  if (!socket) return
+  socket.on('quote_request_received', callback)
+}
 
-  callback(message);
-};
+export const onStatusUpdate = (callback: (data: { requestId: string, status: string }) => void): void => {
+  if (!socket) return
+  socket.on('status_update', callback)
+}
+
+export const cleanup = (): void => {
+  if (!socket) return
+  socket.disconnect()
+  socket = null
+}

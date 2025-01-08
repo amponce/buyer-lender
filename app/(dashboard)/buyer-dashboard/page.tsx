@@ -1,44 +1,33 @@
 'use client'
 
-import { signOut } from 'next-auth/react'
+import { useEffect } from 'react'
 import { useSession } from 'next-auth/react'
-import { redirect } from 'next/navigation'
-import QuoteRequestForm from '@/app/quote-request/QuoteRequestForm'
-import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import BuyerDashboardClient from './BuyerDashboardClient'
 
 export default function BuyerDashboard() {
-  const { data: session } = useSession({
-    required: true,
-    onUnauthenticated() {
-      redirect('/login')
-    }
-  })
+  const { data: session, status } = useSession()
+  const router = useRouter()
 
-  if (session?.user.role !== 'BUYER') {
-    redirect('/login')
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/login')
+    } else if (status === 'authenticated' && session.user.role !== 'BUYER') {
+      router.push('/')
+    }
+  }, [session, status, router])
+
+  if (status === 'loading') {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">Loading...</div>
+      </div>
+    )
   }
 
-  return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Buyer Dashboard</h1>
-        <div className="flex gap-4">
-          <Link
-            href="/quote-request"
-            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
-          >
-            New Quote Request
-          </Link>
-          <button
-            onClick={() => signOut({ callbackUrl: '/login' })}
-            className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700"
-          >
-            Logout
-          </button>
-        </div>
-      </div>
-      
-      <QuoteRequestForm />
-    </div>
-  )
+  if (!session?.user || session.user.role !== 'BUYER') {
+    return null
+  }
+
+  return <BuyerDashboardClient />
 } 
