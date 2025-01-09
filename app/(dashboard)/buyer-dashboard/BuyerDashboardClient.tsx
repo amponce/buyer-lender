@@ -6,6 +6,8 @@ import ChatModal from '@/components/ChatModal'
 import Link from 'next/link'
 import { onNewMessage, onNewQuoteRequest, initializeSocket } from '@/lib/socket'
 import type { Quote, QuoteRequest, Message } from '@/types'
+import QuoteDetailsModal from '@/components/QuoteDetailsModal'
+import AnimatedQuote from '@/components/AnimatedQuote'
 
 export default function BuyerDashboardClient() {
   const { data: session, status } = useSession()
@@ -15,6 +17,7 @@ export default function BuyerDashboardClient() {
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null)
   const [isChatOpen, setIsChatOpen] = useState(false)
   const [unreadMessages, setUnreadMessages] = useState<{[key: string]: number}>({})
+  const [selectedQuoteForDetails, setSelectedQuoteForDetails] = useState<Quote | null>(null)
 
   useEffect(() => {
     console.log('Session status:', status, 'Session:', JSON.stringify(session, null, 2))
@@ -79,25 +82,47 @@ export default function BuyerDashboardClient() {
 
   const handleStatusUpdate = async (quoteId: string, status: 'ACCEPTED' | 'DECLINED') => {
     try {
-      const response = await fetch(`/api/quotes/${quoteId}/status`, {
+      const requestId = quoteRequests.find(request => 
+        request.quotes.some(quote => quote.id === quoteId)
+      )?.id
+
+      if (!requestId) {
+        throw new Error('Quote request not found')
+      }
+
+      const response = await fetch(`/api/quote-requests/${requestId}/quotes`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status })
+        body: JSON.stringify({ quoteId, status })
       })
       
-      if (!response.ok) throw new Error('Failed to update quote status')
+      if (!response.ok) {
+        const errorText = await response.text()
+        throw new Error(errorText || 'Failed to update quote status')
+      }
       
+      const updatedQuote = await response.json()
+      
+      // Update local state
       setQuoteRequests(prevRequests =>
         prevRequests.map(request => ({
           ...request,
+          status: request.id === requestId ? 'COMPLETED' : request.status,
           quotes: request.quotes.map(quote =>
-            quote.id === quoteId ? { ...quote, status } : quote
+            quote.id === quoteId 
+              ? { ...quote, status }
+              : quote.id !== quoteId && request.id === requestId && status === 'ACCEPTED'
+                ? { ...quote, status: 'DECLINED' }
+                : quote
           )
         }))
       )
+
+      // Show success message
+      setError('')
     } catch (err) {
       console.error('Error updating quote status:', err)
-      setError('Failed to update quote status')
+      setError(err instanceof Error ? err.message : 'Failed to update quote status')
     }
   }
 
@@ -200,80 +225,17 @@ export default function BuyerDashboardClient() {
                   <div className="p-6">
                     <h4 className="text-sm font-medium text-gray-900 mb-4">Received Quotes</h4>
                     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                      {request.quotes.map((quote) => (
-                        <div
+                      {request.quotes.map((quote, index) => (
+                        <AnimatedQuote
                           key={quote.id}
-                          className="bg-gray-50 p-6 rounded-lg border border-gray-200"
-                        >
-                          <div className="flex justify-between items-start mb-4">
-                            <div>
-                              <h4 className="text-lg font-semibold">
-                                {quote.interestRate}% APR
-                              </h4>
-                              <p className="text-sm text-gray-500">
-                                {quote.loanTerm} year term
-                              </p>
-                              <p className="text-xs text-gray-500">
-                                from {quote.lender.email}
-                              </p>
-                            </div>
-                            <span
-                              className={`px-2 py-1 text-xs rounded-full ${
-                                quote.status === 'ACCEPTED'
-                                  ? 'bg-green-100 text-green-800'
-                                  : quote.status === 'DECLINED'
-                                  ? 'bg-red-100 text-red-800'
-                                  : 'bg-yellow-100 text-yellow-800'
-                              }`}
-                            >
-                              {quote.status}
-                            </span>
-                          </div>
-
-                          <div className="mb-4">
-                            <p className="text-sm font-medium text-gray-700">
-                              Monthly Payment
-                            </p>
-                            <p className="text-xl font-bold">
-                              ${quote.monthlyPayment.toLocaleString()}
-                            </p>
-                          </div>
-
-                          {quote.additionalNotes && (
-                            <p className="text-sm text-gray-600 mb-4">{quote.additionalNotes}</p>
-                          )}
-
-                          <div className="flex flex-col gap-2">
-                            <button
-                              onClick={() => openChat(quote, request.id)}
-                              className="w-full px-4 py-2 text-sm font-medium text-primary-600 bg-white rounded-md hover:bg-primary-50 border border-primary-200 relative"
-                            >
-                              Chat with Lender
-                              {unreadMessages[quote.lender.id] > 0 && (
-                                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                                  {unreadMessages[quote.lender.id]}
-                                </span>
-                              )}
-                            </button>
-
-                            {quote.status === 'PENDING' && (
-                              <div className="flex gap-2">
-                                <button
-                                  onClick={() => handleStatusUpdate(quote.id, 'ACCEPTED')}
-                                  className="flex-1 px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700"
-                                >
-                                  Accept
-                                </button>
-                                <button
-                                  onClick={() => handleStatusUpdate(quote.id, 'DECLINED')}
-                                  className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700"
-                                >
-                                  Decline
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        </div>
+                          quote={{ ...quote, quoteRequestId: request.id }}
+                          index={index}
+                          onAccept={(quoteId) => handleStatusUpdate(quoteId, 'ACCEPTED')}
+                          onDecline={(quoteId) => handleStatusUpdate(quoteId, 'DECLINED')}
+                          onChat={openChat}
+                          onViewDetails={setSelectedQuoteForDetails}
+                          unreadMessages={unreadMessages[quote.lender.id] || 0}
+                        />
                       ))}
                     </div>
                   </div>
@@ -291,6 +253,26 @@ export default function BuyerDashboardClient() {
             currentUserType="buyer"
             otherUserId={selectedQuote.lender.id}
             requestId={selectedQuote.quoteRequestId}
+          />
+        )}
+
+        {selectedQuoteForDetails && (
+          <QuoteDetailsModal
+            isOpen={!!selectedQuoteForDetails}
+            onClose={() => setSelectedQuoteForDetails(null)}
+            quote={selectedQuoteForDetails}
+            onAccept={() => {
+              if (window.confirm('Are you sure you want to accept this quote? This action cannot be undone and will decline all other quotes.')) {
+                handleStatusUpdate(selectedQuoteForDetails.id, 'ACCEPTED')
+                setSelectedQuoteForDetails(null)
+              }
+            }}
+            onDecline={() => {
+              if (window.confirm('Are you sure you want to decline this quote? This action cannot be undone.')) {
+                handleStatusUpdate(selectedQuoteForDetails.id, 'DECLINED')
+                setSelectedQuoteForDetails(null)
+              }
+            }}
           />
         )}
       </div>

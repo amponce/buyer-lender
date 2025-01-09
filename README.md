@@ -1,154 +1,174 @@
 # Mortgage Quote System
 
-A modern web application connecting home buyers with lenders for mortgage quotes, built with Next.js 14, Prisma, and TypeScript.
+A real-time mortgage quote system where buyers can submit quote requests and receive offers from lenders. Built with Next.js 13, Prisma, SQLite, and Socket.io.
 
-## Current Implementation Status
+## Features
 
-### Core Infrastructure (Phase 1) - ✅ In Progress
+- 🏠 Buyers can submit mortgage quote requests
+- 💰 Lenders can review and submit quotes
+- 💬 Real-time chat between buyers and lenders
+- 🤖 AI-powered automated quotes
+- 📊 Dashboard for managing quotes and requests
+- 🔐 Role-based authentication (Admin, Lender, Buyer)
 
-- **Authentication System**
-  - ✅ User roles (Buyer/Lender)
-  - ✅ Login/Registration
-  - ✅ Role-based redirects
-  - ✅ Session management
+## Prerequisites
 
-- **Database Schema**
-  - ✅ User profiles
-  - ✅ Quote requests
-  - ✅ Quotes
-  - ✅ Messages
-  - ✅ Team management support
+- Node.js 18+ 
+- npm or yarn
+- Git
 
-- **Quote Request System**
-  - ✅ Multi-step wizard interface
-  - ✅ Form validation
-  - ✅ Responsive design
-  - ✅ API endpoints for submission
+## Setup Instructions
 
-### Buyer Features
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd homebuyers
+   ```
 
-- **Quote Request Form**
-  - ✅ Credit score input
-  - ✅ Income information
-  - ✅ Financial obligations
-  - ✅ Property details
-  - ✅ Form validation
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
 
-- **Buyer Dashboard**
-  - ✅ Basic dashboard view
-  - 🚧 Quote comparison tools (In Progress)
-  - 🚧 Status tracking
-  - 🚧 Accept/decline functionality
+3. **Environment Setup**
+   ```bash
+   # Copy the example environment file
+   cp .env.example .env
+   
+   # Generate a secure secret for NextAuth
+   # On Windows PowerShell:
+   node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+   # On Unix-based systems:
+   openssl rand -base64 32
+   
+   # Update .env with your values
+   ```
 
-### Lender Features
+4. **Database Setup**
+   ```bash
+   # Generate Prisma Client
+   npx prisma generate
+   
+   # Create database and run migrations
+   npx prisma migrate dev
+   
+   # Seed the database with test data
+   npx prisma db seed
+   ```
 
-- **Dashboard**
-  - 🚧 Quote request feed
-  - 🚧 Filtering and sorting
-  - 🚧 Quick-view qualifications
+5. **Start the development server**
+   ```bash
+   # Start the Next.js development server
+   npm run dev
+   ```
 
-### Communication System (Phase 2) - 🚧 Planned
+## Development Commands
 
-- Real-time chat
-- File sharing
-- Notifications
-- Template system
+### Database Management
+```bash
+# Reset database (drops all tables and recreates)
+npx prisma migrate reset
 
-### AI Integration (Phase 3) - 📅 Planned
+# Create a new migration after schema changes
+npx prisma migrate dev --name <migration-name>
 
-- Template management
-- Smart responses
-- Qualification checking
-- Analytics
+# Apply migrations without recreating database
+npx prisma migrate deploy
 
-## Tech Stack
+# Open Prisma Studio (database GUI)
+npx prisma studio
+```
 
-- **Frontend**: Next.js 14, React, TypeScript
-- **Backend**: Next.js API Routes
-- **Database**: SQLite (Prisma ORM)
-- **Authentication**: NextAuth.js
-- **State Management**: React Context + Hooks
-- **Styling**: Tailwind CSS
+### Running Tests
+```bash
+# Run all tests
+npm test
+
+# Run tests in watch mode
+npm run test:watch
+```
+
+### Code Quality
+```bash
+# Run ESLint
+npm run lint
+
+# Run TypeScript compiler
+npm run type-check
+```
+
+### Building for Production
+```bash
+# Create production build
+npm run build
+
+# Start production server
+npm start
+```
 
 ## Project Structure
 
 ```
-app/
-├── (auth)/          # Authentication routes
-├── (dashboard)/     # Dashboard routes
-├── api/            # API endpoints
-├── buyer-dashboard/ # Buyer interface
-├── quote-request/  # Quote submission
-└── constants/      # App constants
-
-components/
-├── quote-wizard/   # Quote form components
-└── ...            # Other shared components
-
-lib/
-├── auth.ts        # Authentication utilities
-├── socket.ts      # WebSocket setup
-└── ...           # Other utilities
-
-prisma/
-└── schema.prisma  # Database schema
+homebuyers/
+├── app/                    # Next.js 13 app directory
+│   ├── (auth)/            # Authentication routes
+│   ├── (dashboard)/       # Dashboard routes
+│   ├── api/               # API routes
+│   └── layout.tsx         # Root layout
+├── components/            # React components
+│   ├── ui/               # UI components
+│   └── quote-wizard/     # Quote wizard components
+├── lib/                  # Utility functions and configs
+├── prisma/               # Database schema and migrations
+├── public/               # Static assets
+├── styles/              # Global styles
+└── types/               # TypeScript type definitions
 ```
 
-## Getting Started
+## Environment Variables
 
-1. Clone the repository
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. Set up environment variables:
-   ```
-   Copy .env.example to .env
-   ```
-4. Initialize the database:
-   ```bash
-   npx prisma migrate dev
-   ```
-5. Run the development server:
-   ```bash
-   npm run dev
-   ```
+Required environment variables (see `.env.example` for all options):
 
-## Development Roadmap
+- `DATABASE_URL`: SQLite database URL
+- `NEXTAUTH_SECRET`: Secret for NextAuth.js
+- `NEXTAUTH_URL`: Your application URL
+- `ADMIN_REGISTRATION_CODE`: Code for admin registration
+- `LENDER_CODE`: Code for lender registration
+- `OPENAI_API_KEY`: OpenAI API key for AI features
+- `ANTHROPIC_API_KEY`: Anthropic API key for AI features
 
-### Phase 1 (Current)
-- Complete core buyer and lender dashboards
-- Implement quote management system
-- Enhance form validation and error handling
+## Common Issues & Solutions
 
-### Phase 2
-- Implement real-time communication
-- Add file sharing capabilities
-- Build notification system
+### Database Reset
+If you need to completely reset the database:
+```bash
+# Delete the database file
+rm prisma/dev.db
+# Reset Prisma's migration history
+npx prisma migrate reset
+```
 
-### Phase 3
-- Integrate AI features
-- Add analytics
-- Implement template system
+### Seeding Issues
+If you encounter seeding errors:
+```bash
+# Reset the database and reseed
+npx prisma migrate reset
+# Or manually run the seed
+npx prisma db seed
+```
 
-### Phase 4
-- Performance optimizations
-- Mobile enhancements
-- Advanced filtering
+### Authentication Issues
+- Ensure all environment variables are set correctly
+- Check that the database migrations are up to date
+- Verify the registration codes in your .env file
 
 ## Contributing
 
-1. Create a feature branch
-2. Commit changes
-3. Submit a pull request
-
-## Security Considerations
-
-- All sensitive data is encrypted
-- Role-based access control
-- Secure session management
-- Input validation and sanitization
+1. Create a new branch for your feature
+2. Make your changes
+3. Run tests and linting
+4. Submit a pull request
 
 ## License
 
-[License Type] - See LICENSE file for details 
+MIT License - see LICENSE file for details 

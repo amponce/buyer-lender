@@ -5,215 +5,263 @@ import { v4 as uuidv4 } from 'uuid';
 const prisma = new PrismaClient();
 
 async function main() {
-  // Clean existing data
+  // Clear existing data in the correct order
   await prisma.message.deleteMany();
+  await prisma.aIConversation.deleteMany();
   await prisma.quote.deleteMany();
   await prisma.quoteRequest.deleteMany();
+  await prisma.lenderAIProfile.deleteMany();
   await prisma.user.deleteMany();
 
   // Create test users
-  const password = await hash('password123', 12);
+  const buyers = await Promise.all([
+    prisma.user.create({
+      data: {
+        id: uuidv4(),
+        email: 'aaron.m.ponce+buyer1@gmail.com',
+        password: await hash('password123', 12),
+        role: 'BUYER'
+      }
+    }),
+    prisma.user.create({
+      data: {
+        id: uuidv4(),
+        email: 'aaron.m.ponce+buyer2@gmail.com',
+        password: await hash('password123', 12),
+        role: 'BUYER'
+      }
+    }),
+    prisma.user.create({
+      data: {
+        id: uuidv4(),
+        email: 'aaron.m.ponce+buyer3@gmail.com',
+        password: await hash('password123', 12),
+        role: 'BUYER'
+      }
+    })
+  ]);
 
-  // Create buyers
-  const buyer1 = await prisma.user.create({
-    data: {
-      id: uuidv4(),
-      email: 'aaron.m.ponce+buyer1@gmail.com',
-      password,
-      role: 'BUYER'
-    }
-  });
+  const lenders = await Promise.all([
+    prisma.user.create({
+      data: {
+        id: uuidv4(),
+        email: 'aaron.m.ponce+lender1@gmail.com',
+        password: await hash('password123', 12),
+        role: 'LENDER'
+      }
+    }),
+    prisma.user.create({
+      data: {
+        id: uuidv4(),
+        email: 'aaron.m.ponce+lender2@gmail.com',
+        password: await hash('password123', 12),
+        role: 'LENDER'
+      }
+    }),
+    prisma.user.create({
+      data: {
+        id: uuidv4(),
+        email: 'aaron.m.ponce+lender3@gmail.com',
+        password: await hash('password123', 12),
+        role: 'LENDER'
+      }
+    })
+  ]);
 
-  const buyer2 = await prisma.user.create({
-    data: {
-      id: uuidv4(),
-      email: 'aaron.m.ponce+buyer2@gmail.com',
-      password,
-      role: 'BUYER'
-    }
-  });
+  // Create AI profiles for lenders with rate sheets
+  const lenderAIProfiles = await Promise.all(lenders.map(lender => 
+    prisma.lenderAIProfile.create({
+      data: {
+        id: uuidv4(),
+        lenderId: lender.id,
+        isAutopilotActive: true,
+        rateSheet: JSON.stringify({
+          '30_year_fixed': {
+            base_rate: 6.875,
+            min_credit_score: 620,
+            points: 0,
+            credit_adjustments: {
+              '760+': -0.5,
+              '740-759': -0.375,
+              '720-739': -0.25,
+              '700-719': -0.125,
+              '680-699': 0,
+              '660-679': 0.25,
+              '<660': 0.5
+            }
+          },
+          '15_year_fixed': {
+            base_rate: 6.125,
+            min_credit_score: 620,
+            points: 0
+          },
+          'fha': {
+            base_rate: 6.75,
+            min_credit_score: 580,
+            points: 0,
+            mip_annual: 0.85,
+            mip_upfront: 1.75
+          }
+        }),
+        guidelines: JSON.stringify({
+          min_credit_score: 620,
+          max_dti: 43,
+          max_ltv: 97,
+          income_requirements: [
+            'Two years of employment history required',
+            'Stable or increasing income preferred',
+            'All income sources must be verifiable'
+          ]
+        }),
+        productInfo: JSON.stringify({
+          conventional: {
+            terms: [15, 30],
+            min_down: 3,
+            pmi_required: true,
+            pmi_removal: 'At 20% equity'
+          },
+          fha: {
+            terms: [30],
+            min_down: 3.5,
+            mip_required: true,
+            mip_removal: 'Must refinance'
+          }
+        }),
+        faqResponses: JSON.stringify([
+          {
+            question: 'What documents do I need?',
+            answer: 'You will need: Pay stubs, W-2s, tax returns, bank statements, and employment verification.'
+          },
+          {
+            question: 'How long does the process take?',
+            answer: 'Typically 30-45 days from application to closing.'
+          }
+        ])
+      },
+      include: {
+        lender: true
+      }
+    })
+  ));
 
-  // Create lenders
-  const lender1 = await prisma.user.create({
+  // Create a quote request for the first buyer
+  const quoteRequest = await prisma.quoteRequest.create({
     data: {
-      id: uuidv4(),
-      email: 'aaron.m.ponce+lender1@gmail.com',
-      password,
-      role: 'LENDER'
-    }
-  });
-
-  const lender2 = await prisma.user.create({
-    data: {
-      id: uuidv4(),
-      email: 'aaron.m.ponce+lender2@gmail.com',
-      password,
-      role: 'LENDER'
-    }
-  });
-
-  // Create quote requests
-  const request1 = await prisma.quoteRequest.create({
-    data: {
-      userId: buyer1.id,
-      creditScore: 750,
-      annualIncome: 120000,
-      additionalIncome: 10000,
-      monthlyCarLoan: 400,
-      monthlyCreditCard: 200,
-      monthlyOtherExpenses: 300,
-      purchasePrice: 450000,
+      buyerId: buyers[0].id,
       propertyAddress: '123 Main St',
+      propertyCity: 'San Francisco',
       propertyState: 'CA',
       propertyZipCode: '94105',
-      status: 'QUOTED',
-      quotes: {
-        create: [
-          {
-            lenderId: lender1.id,
-            interestRate: 6.25,
-            loanTerm: 30,
-            monthlyPayment: 2771,
-            additionalNotes: 'Great credit score! We can offer competitive rates.',
-            status: 'PENDING'
-          },
-          {
-            lenderId: lender2.id,
-            interestRate: 6.5,
-            loanTerm: 30,
-            monthlyPayment: 2844,
-            additionalNotes: 'We can close this loan in 21 days!',
-            status: 'PENDING'
-          }
-        ]
-      },
-      messages: {
-        create: [
-          {
-            senderId: buyer1.id,
-            lenderId: lender1.id,
-            content: 'Hi, I have some questions about your quote.'
-          },
-          {
-            senderId: lender1.id,
-            lenderId: lender1.id,
-            content: 'Of course! Happy to help. What would you like to know?'
-          },
-          {
-            senderId: buyer1.id,
-            lenderId: lender2.id,
-            content: 'Can you tell me more about your 21-day closing process?'
-          },
-          {
-            senderId: lender2.id,
-            lenderId: lender2.id,
-            content: 'We have a streamlined process and work closely with local title companies to ensure quick closings.'
-          }
-        ]
-      }
-    }
-  });
-
-  const request2 = await prisma.quoteRequest.create({
-    data: {
-      userId: buyer2.id,
-      creditScore: 680,
-      annualIncome: 85000,
-      additionalIncome: 5000,
-      monthlyCarLoan: 350,
-      monthlyCreditCard: 150,
-      monthlyOtherExpenses: 200,
-      purchasePrice: 350000,
-      propertyAddress: '456 Oak Ave',
-      propertyState: 'TX',
-      propertyZipCode: '75001',
-      status: 'PENDING',
-      quotes: {
-        create: [
-          {
-            lenderId: lender1.id,
-            interestRate: 6.75,
-            loanTerm: 30,
-            monthlyPayment: 2271,
-            additionalNotes: 'We can work with your credit score.',
-            status: 'PENDING'
-          }
-        ]
-      }
-    }
-  });
-
-  const request3 = await prisma.quoteRequest.create({
-    data: {
-      userId: buyer1.id,
-      creditScore: 760,
-      annualIncome: 130000,
-      additionalIncome: 15000,
+      purchasePrice: 750000,
+      downPaymentAmount: 150000, // 20% down payment
+      creditScore: 740,
+      annualIncome: 175000,
       monthlyCarLoan: 500,
-      monthlyCreditCard: 300,
-      monthlyOtherExpenses: 400,
-      purchasePrice: 550000,
-      propertyAddress: '789 Pine St',
-      propertyState: 'FL',
-      propertyZipCode: '33101',
-      status: 'QUOTED',
-      quotes: {
-        create: [
-          {
-            lenderId: lender1.id,
-            interestRate: 6.375,
-            loanTerm: 30,
-            monthlyPayment: 3432,
-            status: 'ACCEPTED'
-          }
-        ]
-      }
+      monthlyCreditCard: 200,
+      monthlyOtherExpenses: 300,
+      employmentStatus: 'EMPLOYED',
+      employmentYears: 5
     }
   });
 
-  // Create messages
-  await prisma.message.createMany({
-    data: [
-      {
-        requestId: request1.id,
-        senderId: lender1.id,
-        lenderId: lender1.id,
-        content: "Hi! I've submitted a quote for your request. Let me know if you have any questions!"
-      },
-      {
-        requestId: request1.id,
-        senderId: buyer1.id,
-        lenderId: lender1.id,
-        content: "Thanks! Could you explain the closing timeline?"
-      },
-      {
-        requestId: request1.id,
-        senderId: lender1.id,
-        lenderId: lender1.id,
-        content: "We typically close in 30 days, but can expedite if needed."
-      },
-      {
-        requestId: request2.id,
-        senderId: lender2.id,
-        lenderId: lender2.id,
-        content: "Hello! I've reviewed your application and provided a quote. Happy to discuss the terms."
-      },
-      {
-        requestId: request2.id,
-        senderId: buyer1.id,
-        lenderId: lender2.id,
-        content: "Thank you! The interest rate seems a bit high. Is there any flexibility?"
+  // Create AI conversations and quotes for each lender
+  for (const lenderProfile of lenderAIProfiles) {
+    // Create AI conversation
+    const conversation = await prisma.aIConversation.create({
+      data: {
+        id: uuidv4(),
+        aiProfileId: lenderProfile.id,
+        quoteRequestId: quoteRequest.id,
+        status: 'ACTIVE',
+        summary: JSON.stringify({
+          profile: {
+            creditScore: 740,
+            monthlyIncome: 14583.33,
+            dti: '6.9%',
+            ltv: '80.0%',
+            maxLoanAmount: 700000
+          },
+          challenges: [],
+          recommendedPrograms: [
+            'Conventional 30-Year Fixed',
+            'Conventional 15-Year Fixed'
+          ],
+          nextSteps: [
+            'Review available loan options',
+            'Discuss qualification requirements'
+          ]
+        }),
+        nextSteps: 'Ready to proceed with pre-approval'
       }
-    ]
-  });
+    });
 
-  console.log({
-    buyer1: { id: buyer1.id, email: buyer1.email },
-    buyer2: { id: buyer2.id, email: buyer2.email },
-    lender1: { id: lender1.id, email: lender1.email },
-    lender2: { id: lender2.id, email: lender2.email },
-  });
-  console.log('Seed data created successfully!');
+    // Create quotes
+    const quotes = [
+      {
+        type: 'Conventional 30-Year Fixed',
+        rate: 6.5,
+        term: 30,
+        monthlyPI: 3791.68,
+        monthlyMI: 0,
+        monthlyTotal: 3791.68
+      },
+      {
+        type: 'Conventional 15-Year Fixed',
+        rate: 5.875,
+        term: 15,
+        monthlyPI: 5012.45,
+        monthlyMI: 0,
+        monthlyTotal: 5012.45
+      }
+    ];
+
+    const quotePromises = quotes.map((quote, index) => 
+      new Promise(resolve => setTimeout(async () => {
+        const createdQuote = await prisma.quote.create({
+          data: {
+            quoteRequestId: quoteRequest.id,
+            lenderId: lenderProfile.lenderId,
+            interestRate: quote.rate,
+            loanTerm: quote.term,
+            monthlyPayment: quote.monthlyTotal,
+            isAIGenerated: true,
+            additionalNotes: `${quote.type}\n` +
+              `Down Payment: $150,000 (20%)\n` +
+              `Monthly P&I: $${quote.monthlyPI.toFixed(2)}\n` +
+              `Monthly MI: $${quote.monthlyMI.toFixed(2)}\n` +
+              `Total Cash Needed: $165,000`
+          }
+        })
+        resolve(createdQuote)
+      }, index * 2000)) // 2 second delay between each quote
+    )
+
+    // Create initial message
+    await prisma.message.create({
+      data: {
+        requestId: quoteRequest.id,
+        senderId: lenderProfile.lenderId,
+        lenderId: lenderProfile.lenderId,
+        content: `Great news! Based on your strong profile, you have several excellent financing options available.\n\n` +
+          `With your solid credit score of 740 and 20% down payment, you qualify for our best rates and most flexible terms.\n\n` +
+          `I've prepared two options for you to consider:\n\n` +
+          `1. Conventional 30-Year Fixed\n` +
+          `• Rate: 6.5%\n` +
+          `• Monthly Payment: $3,791.68\n` +
+          `• No PMI required\n\n` +
+          `2. Conventional 15-Year Fixed\n` +
+          `• Rate: 5.875%\n` +
+          `• Monthly Payment: $5,012.45\n` +
+          `• Build equity faster\n\n` +
+          `Would you like to:\n` +
+          `• Compare these options in more detail?\n` +
+          `• Calculate payments with different down payment amounts?\n` +
+          `• Start the pre-approval process?`,
+        isAIGenerated: true,
+        aiConversationId: conversation.id
+      }
+    });
+  }
 }
 
 main()
@@ -223,4 +271,4 @@ main()
   })
   .finally(async () => {
     await prisma.$disconnect();
-  }); 
+  });

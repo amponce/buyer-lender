@@ -1,0 +1,15 @@
+{
+  "propertyAddress": "456 Market St",
+  "propertyCity": "San Francisco",
+  "propertyState": "CA",
+  "propertyZipCode": "94105",
+  "purchasePrice": 850000,
+  "downPaymentAmount": 85000,
+  "creditScore": 720,
+  "annualIncome": 200000,
+  "monthlyCarLoan": 400,
+  "monthlyCreditCard": 300,
+  "monthlyOtherExpenses": 200,
+  "employmentStatus": "EMPLOYED",
+  "employmentYears": 3
+} 

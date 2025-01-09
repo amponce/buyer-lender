@@ -1,94 +1,70 @@
 'use client'
 
-import { useState } from 'react'
-import PersonalInfo from '@/components/quote-wizard/steps/PersonalInfo'
-import IncomeInfo from '@/components/quote-wizard/steps//IncomeInfo'
-import Obligations from '@/components/quote-wizard/steps/Obligations'
-import PropertyInfo from '@/components/quote-wizard/steps//PropertyInfo'
-import Review from '@/components/quote-wizard/steps/Review'
-import ProgressBar from '@/components/quote-wizard/ProgressBar'
+import { cn } from '@/lib/utils'
 
-const STEPS = [
-  { title: 'Personal Info', description: 'Basic information and credit score' },
-  { title: 'Income', description: 'Your income sources' },
-  { title: 'Obligations', description: 'Current financial obligations' },
-  { title: 'Property', description: 'Property details' },
-  { title: 'Review', description: 'Review and submit' }
+interface Step {
+  title: string
+  description: string
+}
+
+const steps: Step[] = [
+  {
+    title: 'Property Details',
+    description: 'Enter property information',
+  },
+  {
+    title: 'Financial Information',
+    description: 'Enter your financial details',
+  },
+  {
+    title: 'Review & Submit',
+    description: 'Review your information',
+  },
 ]
 
 interface Props {
-  onSubmit: (data: any) => Promise<void>;
-  isSubmitting?: boolean;
+  currentStep: number
+  onStepChange: (step: number) => void
 }
 
-export default function QuoteWizardClient({ onSubmit }: Props) {
-  const [currentStep, setCurrentStep] = useState(0)
-  const [formData, setFormData] = useState({
-    creditScore: '',
-    annualIncome: '',
-    additionalIncome: '',
-    monthlyCarLoan: '',
-    monthlyCreditCard: '',
-    monthlyOtherExpenses: '',
-    purchasePrice: '',
-    propertyAddress: '',
-    propertyState: '',
-    propertyZipCode: ''
-  })
-
-  const updateFormData = (data: Partial<typeof formData>) => {
-    setFormData(prev => ({ ...prev, ...data }))
-  }
-
-  const nextStep = () => setCurrentStep(prev => Math.min(prev + 1, STEPS.length - 1))
-  const prevStep = () => setCurrentStep(prev => Math.max(prev - 1, 0))
-
-  const handleSubmit = () => {
-    const transformedData = {
-      ...formData,
-      creditScore: parseInt(formData.creditScore),
-      annualIncome: parseFloat(formData.annualIncome),
-      additionalIncome: parseFloat(formData.additionalIncome || '0'),
-      monthlyCarLoan: parseFloat(formData.monthlyCarLoan || '0'),
-      monthlyCreditCard: parseFloat(formData.monthlyCreditCard || '0'),
-      monthlyOtherExpenses: parseFloat(formData.monthlyOtherExpenses || '0'),
-      purchasePrice: parseFloat(formData.purchasePrice),
-    }
-    onSubmit(transformedData)
-  }
-
-  const renderStep = () => {
-    switch (currentStep) {
-      case 0:
-        return <PersonalInfo data={formData} updateData={updateFormData} onNext={nextStep} />
-      case 1:
-        return <IncomeInfo data={formData} updateData={updateFormData} onNext={nextStep} onBack={prevStep} />
-      case 2:
-        return <Obligations data={formData} updateData={updateFormData} onNext={nextStep} onBack={prevStep} />
-      case 3:
-        return <PropertyInfo data={formData} updateData={updateFormData} onNext={nextStep} onBack={prevStep} />
-      case 4:
-        return <Review 
-          data={formData} 
-          onSubmit={handleSubmit}
-          onBack={prevStep}
-          onEdit={setCurrentStep}
-        />
-      default:
-        return null
-    }
-  }
-
+export default function QuoteWizardStepper({ currentStep, onStepChange }: Props) {
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold text-center text-gray-900 mb-8">
-        Submit Quote Request
-      </h1>
-      <div className="mb-12">
-        <ProgressBar steps={STEPS} currentStep={currentStep} />
-      </div>
-      <div className="bg-white shadow-lg rounded-lg p-6">
-        {renderStep()}
+    <div className="w-full py-6 mb-8">
+      <div className="mx-auto px-4 sm:px-6 lg:px-8">
+        <nav aria-label="Progress">
+          <ol role="list" className="space-y-4 md:flex md:space-x-8 md:space-y-0">
+            {steps.map((step, index) => (
+              <li key={step.title} className="md:flex-1">
+                <button
+                  onClick={() => index <= currentStep && onStepChange(index)}
+                  className={cn(
+                    'group flex w-full flex-col border-l-4 py-2 pl-4 md:border-l-0 md:border-t-4 md:pb-0 md:pl-0 md:pt-4',
+                    index <= currentStep
+                      ? 'cursor-pointer border-primary hover:border-primary/70'
+                      : 'cursor-not-allowed border-gray-200',
+                    index === currentStep && 'border-primary'
+                  )}
+                  disabled={index > currentStep}
+                >
+                  <span className="text-sm font-medium">
+                    Step {index + 1}
+                  </span>
+                  <span
+                    className={cn(
+                      'text-sm',
+                      index <= currentStep ? 'text-primary' : 'text-gray-500'
+                    )}
+                  >
+                    {step.title}
+                  </span>
+                  <span className="text-sm text-gray-500">
+                    {step.description}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ol>
+        </nav>
       </div>
     </div>
   )

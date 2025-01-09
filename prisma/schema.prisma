@@ -22,29 +22,83 @@ model User {
   quoteRequests QuoteRequest[]
   team          User?          @relation("TeamMembers", fields: [teamId], references: [id])
   members       User[]         @relation("TeamMembers")
+  aiProfile     LenderAIProfile? // Only for lenders
+}
+
+// AI configuration for lenders
+model LenderAIProfile {
+  id                String   @id @default(uuid())
+  lenderId          String   @unique
+  isAutopilotActive Boolean  @default(false)
+  rateSheet         String   // JSON string of rate information
+  guidelines        String   // Lending guidelines and requirements
+  productInfo       String   // Available loan products
+  faqResponses      String   // Common questions and answers
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  // Relations
+  lender            User     @relation(fields: [lenderId], references: [id])
+  conversations     AIConversation[]
+}
+
+// Track AI-led conversations
+model AIConversation {
+  id              String    @id @default(uuid())
+  aiProfileId     String
+  quoteRequestId  String
+  status          String    @default("ACTIVE") // ACTIVE, COMPLETED, TRANSFERRED_TO_LENDER
+  summary         String?   // Summary of conversation and findings
+  nextSteps       String?   // Recommended next steps for lender
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  // Relations
+  aiProfile       LenderAIProfile @relation(fields: [aiProfileId], references: [id])
+  quoteRequest    QuoteRequest    @relation(fields: [quoteRequestId], references: [id])
+  messages        Message[]
+
+  @@index([aiProfileId])
+  @@index([quoteRequestId])
 }
 
 model QuoteRequest {
-  id                   String    @id @default(uuid())
-  userId               String
-  creditScore          Int
-  annualIncome         Float
-  additionalIncome     Float
-  monthlyCarLoan       Float
-  monthlyCreditCard    Float
-  monthlyOtherExpenses Float
-  purchasePrice        Float
-  propertyAddress      String?
-  propertyState        String
-  propertyZipCode      String
-  status               String    @default("PENDING")
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
-  messages             Message[]
-  quotes               Quote[]
-  user                 User      @relation(fields: [userId], references: [id])
+  id                  String    @id @default(cuid())
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  status              String    @default("PENDING")
+  propertyAddress     String
+  propertyCity        String
+  propertyState       String
+  propertyZipCode     String
+  purchasePrice       Float
+  downPaymentAmount   Float     @default(0)
+  creditScore         Int
+  annualIncome        Float
+  monthlyCarLoan      Float     @default(0)
+  monthlyCreditCard   Float     @default(0)
+  monthlyOtherExpenses Float    @default(0)
+  employmentStatus    String    @default("EMPLOYED") // EMPLOYED, SELF_EMPLOYED, RETIRED, OTHER
+  employmentYears     Float     @default(0)
+  employmentHistory   EmploymentHistory[]
+  buyer               User      @relation(fields: [buyerId], references: [id])
+  buyerId             String
+  quotes              Quote[]
+  messages            Message[]
+  aiConversations     AIConversation[]
+}
 
-  @@index([userId])
+
+model EmploymentHistory {
+  id              String       @id @default(cuid())
+  employer        String
+  position        String
+  startDate       DateTime
+  endDate         DateTime?
+  currentJob      Boolean      @default(false)
+  monthlyIncome   Float
+  quoteRequest    QuoteRequest @relation(fields: [quoteRequestId], references: [id], onDelete: Cascade)
+  quoteRequestId  String
 }
 
 model Quote {
@@ -56,6 +110,7 @@ model Quote {
   monthlyPayment  Float
   additionalNotes String?
   status          String       @default("PENDING")
+  isAIGenerated   Boolean     @default(false)
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
   lender          User         @relation("LenderQuotes", fields: [lenderId], references: [id])
@@ -66,17 +121,23 @@ model Quote {
 }
 
 model Message {
-  id           String       @id @default(uuid())
-  requestId    String
-  senderId     String
-  lenderId     String
-  content      String
-  createdAt    DateTime     @default(now())
-  sender       User         @relation(fields: [senderId], references: [id])
-  quoteRequest QuoteRequest @relation(fields: [requestId], references: [id])
-  lender       User         @relation("MessageLender", fields: [lenderId], references: [id])
+  id              String          @id @default(uuid())
+  requestId       String
+  senderId        String
+  lenderId        String
+  content         String
+  isAIGenerated   Boolean         @default(false)
+  aiConversationId String?
+  createdAt       DateTime        @default(now())
+  
+  // Relations
+  sender          User            @relation(fields: [senderId], references: [id])
+  quoteRequest    QuoteRequest    @relation(fields: [requestId], references: [id])
+  lender          User            @relation("MessageLender", fields: [lenderId], references: [id])
+  aiConversation  AIConversation? @relation(fields: [aiConversationId], references: [id])
 
   @@index([requestId])
   @@index([senderId])
   @@index([lenderId])
+  @@index([aiConversationId])
 }

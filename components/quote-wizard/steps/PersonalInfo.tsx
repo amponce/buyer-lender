@@ -1,6 +1,6 @@
 import React from 'react';
 import { useForm } from 'react-hook-form';
-import InfoTooltip from '../../InfoTooltip';
+import InfoTooltip from '@/components/InfoTooltip';
 
 interface Props {
   data: {
