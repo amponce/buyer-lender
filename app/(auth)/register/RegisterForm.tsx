@@ -1,11 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { useForm } from 'react-hook-form'
 import { useRouter } from 'next/navigation'
+import { useForm } from 'react-hook-form'
+import type { UserType } from '@/types'
 import Link from 'next/link'
-
-type UserType = 'BUYER' | 'LENDER' | 'LENDER_TEAM'
 
 export default function RegisterForm() {
   const [error, setError] = useState<string>('')

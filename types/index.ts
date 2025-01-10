@@ -83,27 +83,10 @@ export interface AIConversation {
   }
 }
 
-export interface QuoteRequest {
-  id: string
-  buyerId: string
-  creditScore: number
-  annualIncome: number
-  monthlyCarLoan: number
-  monthlyCreditCard: number
-  monthlyOtherExpenses: number
-  purchasePrice: number
-  propertyAddress: string
-  propertyState: string
-  propertyZipCode: string
-  status: QuoteRequestStatus
-  createdAt: Date
-  updatedAt: Date
+export interface QuoteRequest extends PrismaQuoteRequest {
+  additionalIncome: number
   quotes: Quote[]
-  aiConversations: AIConversation[]
-  buyer: {
-    id: string
-    email: string
-  }
+  buyer: User
 }
 
 export interface Message {
@@ -114,6 +97,8 @@ export interface Message {
   content: string
   createdAt: string
   isAIGenerated?: boolean
+  isAIProcessed?: boolean
+  isOriginalMessage?: boolean
 }
 
 export interface RateSheet {
@@ -209,4 +194,6 @@ export interface ChatMessage {
   role: ChatRole
   content: string
 }
+
+export type UserType = 'BUYER' | 'LENDER' | 'LENDER_TEAM'
 

@@ -5,34 +5,16 @@ import { useSession } from 'next-auth/react'
 import ChatModal from '@/components/ChatModal'
 import QuoteModal from '@/components/QuoteModal'
 import { formatCurrency } from '@/lib/utils'
+import { QuoteRequest, QuoteRequestStatus, Quote, User } from '@/types'
 
-interface QuoteRequest {
-  id: string
-  userId: string
-  creditScore: number
-  annualIncome: number
-  additionalIncome: number
-  monthlyCarLoan: number
-  monthlyCreditCard: number
-  monthlyOtherExpenses: number
-  purchasePrice: number
-  propertyAddress?: string
-  propertyState: string
-  propertyZipCode: string
-  status: 'PENDING' | 'QUOTED' | 'ACCEPTED' | 'DECLINED'
-  createdAt: Date
-  user: {
-    id: string
-    email: string
-  }
-  quotes: Array<{
-    id: string
-    lenderId: string
-    interestRate: number
-    loanTerm: number
-    monthlyPayment: number
-    status: string
-  }>
+interface Filters {
+  creditScoreMin: number
+  creditScoreMax: number
+  incomeMin: number
+  incomeMax: number
+  loanSizeMin: number
+  loanSizeMax: number
+  state: string
 }
 
 export default function LenderDashboardClient() {
@@ -43,9 +25,16 @@ export default function LenderDashboardClient() {
   const [selectedRequest, setSelectedRequest] = useState<QuoteRequest | null>(null)
   const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false)
   const [isChatModalOpen, setIsChatModalOpen] = useState(false)
-  const [sortField, setSortField] = useState<keyof QuoteRequest>('createdAt')
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
-  const [filterState, setFilterState] = useState('')
+  const [activeTab, setActiveTab] = useState<'new' | 'completed'>('new')
+  const [filters, setFilters] = useState<Filters>({
+    creditScoreMin: 0,
+    creditScoreMax: 850,
+    incomeMin: 0,
+    incomeMax: 1000000,
+    loanSizeMin: 0,
+    loanSizeMax: 10000000,
+    state: ''
+  })
 
   useEffect(() => {
     fetchQuoteRequests()
@@ -81,28 +70,34 @@ export default function LenderDashboardClient() {
     }
   }
 
-  const handleSort = (field: keyof QuoteRequest) => {
-    setSortField(field)
-    setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc')
-  }
+  const filteredRequests = quoteRequests.filter(request => {
+    // Filter out requests that the lender has already responded to
+    const hasLenderResponded = request.quotes.some(q => q.lenderId === session?.user?.id)
+    
+    if (activeTab === 'new') {
+      if (hasLenderResponded || 
+          request.status === 'COMPLETED' || 
+          request.status === 'IN_REVIEW') {
+        return false
+      }
+    } else {
+      // 'completed' tab - show only requests this lender has responded to
+      if (!hasLenderResponded) {
+        return false
+      }
+    }
 
-  const sortedAndFilteredRequests = quoteRequests
-    .filter(request => !filterState || request.propertyState === filterState)
-    .sort((a, b) => {
-      const aValue = a[sortField]
-      const bValue = b[sortField]
-      const modifier = sortDirection === 'asc' ? 1 : -1
-      
-      if (typeof aValue === 'string' && typeof bValue === 'string') {
-        return aValue.localeCompare(bValue) * modifier
-      }
-      
-      if (aValue instanceof Date && bValue instanceof Date) {
-        return (aValue.getTime() - bValue.getTime()) * modifier
-      }
-      
-      return ((aValue as number) - (bValue as number)) * modifier
-    })
+    // Apply filters
+    return (
+      request.creditScore >= filters.creditScoreMin &&
+      request.creditScore <= filters.creditScoreMax &&
+      request.annualIncome >= filters.incomeMin &&
+      request.annualIncome <= filters.incomeMax &&
+      request.purchasePrice >= filters.loanSizeMin &&
+      request.purchasePrice <= filters.loanSizeMax &&
+      (filters.state === '' || request.propertyState === filters.state)
+    )
+  })
 
   const handleQuoteSubmit = async (quoteData: {
     interestRate: number
@@ -130,7 +125,7 @@ export default function LenderDashboardClient() {
             ? {
                 ...request,
                 quotes: [...request.quotes, newQuote],
-                status: 'QUOTED'
+                status: 'QUOTED' as const
               }
             : request
         )
@@ -151,36 +146,137 @@ export default function LenderDashboardClient() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold mb-4">Quote Requests</h1>
         
-        <div className="flex gap-4 mb-4">
-          <select
-            value={filterState}
-            onChange={(e) => setFilterState(e.target.value)}
-            className="px-3 py-2 border rounded-md"
-          >
-            <option value="">All States</option>
-            {Array.from(new Set(quoteRequests.map(r => r.propertyState))).map(state => (
-              <option key={state} value={state}>{state}</option>
-            ))}
-          </select>
-
+        <div className="flex gap-4 mb-6">
           <button
-            onClick={() => handleSort('createdAt')}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border rounded-md hover:bg-gray-50"
+            onClick={() => setActiveTab('new')}
+            className={`px-4 py-2 rounded-md ${
+              activeTab === 'new'
+                ? 'bg-primary-600 text-white'
+                : 'bg-white text-gray-700 border'
+            }`}
           >
-            Sort by Date {sortField === 'createdAt' && (sortDirection === 'asc' ? '↑' : '↓')}
+            New Requests
           </button>
-
           <button
-            onClick={() => handleSort('purchasePrice')}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border rounded-md hover:bg-gray-50"
+            onClick={() => setActiveTab('completed')}
+            className={`px-4 py-2 rounded-md ${
+              activeTab === 'completed'
+                ? 'bg-primary-600 text-white'
+                : 'bg-white text-gray-700 border'
+            }`}
           >
-            Sort by Price {sortField === 'purchasePrice' && (sortDirection === 'asc' ? '↑' : '↓')}
+            Completed
           </button>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Credit Score
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="number"
+                placeholder="Min"
+                value={filters.creditScoreMin || ''}
+                onChange={(e) => setFilters(prev => ({
+                  ...prev,
+                  creditScoreMin: parseInt(e.target.value) || 0
+                }))}
+                className="w-full px-3 py-2 border rounded-md text-sm"
+              />
+              <input
+                type="number"
+                placeholder="Max"
+                value={filters.creditScoreMax || ''}
+                onChange={(e) => setFilters(prev => ({
+                  ...prev,
+                  creditScoreMax: parseInt(e.target.value) || 850
+                }))}
+                className="w-full px-3 py-2 border rounded-md text-sm"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Annual Income
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="number"
+                placeholder="Min"
+                value={filters.incomeMin || ''}
+                onChange={(e) => setFilters(prev => ({
+                  ...prev,
+                  incomeMin: parseInt(e.target.value) || 0
+                }))}
+                className="w-full px-3 py-2 border rounded-md text-sm"
+              />
+              <input
+                type="number"
+                placeholder="Max"
+                value={filters.incomeMax || ''}
+                onChange={(e) => setFilters(prev => ({
+                  ...prev,
+                  incomeMax: parseInt(e.target.value) || 1000000
+                }))}
+                className="w-full px-3 py-2 border rounded-md text-sm"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Loan Size
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="number"
+                placeholder="Min"
+                value={filters.loanSizeMin || ''}
+                onChange={(e) => setFilters(prev => ({
+                  ...prev,
+                  loanSizeMin: parseInt(e.target.value) || 0
+                }))}
+                className="w-full px-3 py-2 border rounded-md text-sm"
+              />
+              <input
+                type="number"
+                placeholder="Max"
+                value={filters.loanSizeMax || ''}
+                onChange={(e) => setFilters(prev => ({
+                  ...prev,
+                  loanSizeMax: parseInt(e.target.value) || 10000000
+                }))}
+                className="w-full px-3 py-2 border rounded-md text-sm"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              State
+            </label>
+            <select
+              value={filters.state}
+              onChange={(e) => setFilters(prev => ({
+                ...prev,
+                state: e.target.value
+              }))}
+              className="w-full px-3 py-2 border rounded-md text-sm"
+            >
+              <option value="">All States</option>
+              {Array.from(new Set(quoteRequests.map(r => r.propertyState))).map(state => (
+                <option key={state} value={state}>{state}</option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {sortedAndFilteredRequests.map((request) => (
+        {filteredRequests.map((request) => (
           <div
             key={request.id}
             className="bg-white p-6 rounded-lg shadow-md border border-gray-200"
@@ -273,8 +369,9 @@ export default function LenderDashboardClient() {
             onClose={() => setIsChatModalOpen(false)}
             currentUserId={session?.user?.id || ''}
             currentUserType="lender"
-            otherUserId={selectedRequest.user.id}
+            otherUserId={selectedRequest.buyerId}
             requestId={selectedRequest.id}
+            lenderId={session?.user?.id || ''}
           />
         </>
       )}

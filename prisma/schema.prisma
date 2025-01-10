@@ -1,6 +1,7 @@
 generator client {
   provider      = "prisma-client-js"
   binaryTargets = ["native", "darwin-arm64"]
+  previewFeatures = ["clientExtensions"]
 }
 
 datasource db {
@@ -42,6 +43,8 @@ model User {
   aiProfile     LenderAIProfile?
   buyerCalls    ScheduledCall[] @relation("BuyerCalls")
   lenderCalls   ScheduledCall[] @relation("LenderCalls")
+  watchlist     Watchlist[]    @relation("LenderWatchlist")
+  skippedQuotes SkippedQuotes[] @relation("LenderSkipped")
 
   @@map("users")
 }
@@ -107,6 +110,8 @@ model QuoteRequest {
   quotes              Quote[]
   messages            Message[]
   aiConversations     AIConversation[]
+  watchedBy           Watchlist[]
+  skippedBy           SkippedQuotes[]
 }
 
 
@@ -136,6 +141,7 @@ model Quote {
   updatedAt       DateTime     @updatedAt
   lender          User         @relation("LenderQuotes", fields: [lenderId], references: [id])
   quoteRequest    QuoteRequest @relation(fields: [quoteRequestId], references: [id])
+  scheduledCalls  ScheduledCall[]
 
   @@index([quoteRequestId])
   @@index([lenderId])
@@ -148,6 +154,8 @@ model Message {
   lenderId        String
   content         String
   isAIGenerated   Boolean         @default(false)
+  isAIProcessed   Boolean         @default(false)
+  isOriginalMessage Boolean       @default(false)
   aiConversationId String?
   createdAt       DateTime        @default(now())
   
@@ -182,4 +190,36 @@ model ScheduledCall {
   @@index([buyerId])
   @@index([lenderId])
   @@index([quoteId])
+}
+
+model Watchlist {
+  id            String      @id @default(cuid())
+  lender        User        @relation("LenderWatchlist", fields: [lenderId], references: [id])
+  lenderId      String
+  quoteRequest  QuoteRequest @relation(fields: [quoteRequestId], references: [id])
+  quoteRequestId String
+  watched       Boolean     @default(true)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@unique([lenderId, quoteRequestId])
+  @@index([lenderId])
+  @@index([quoteRequestId])
+  @@map("watchlist")
+}
+
+model SkippedQuotes {
+  id            String      @id @default(cuid())
+  lender        User        @relation("LenderSkipped", fields: [lenderId], references: [id])
+  lenderId      String
+  quoteRequest  QuoteRequest @relation(fields: [quoteRequestId], references: [id])
+  quoteRequestId String
+  skipped       Boolean     @default(true)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@unique([lenderId, quoteRequestId])
+  @@index([lenderId])
+  @@index([quoteRequestId])
+  @@map("skipped_quotes")
 }

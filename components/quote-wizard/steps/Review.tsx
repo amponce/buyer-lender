@@ -1,5 +1,5 @@
 import React from 'react';
-import { formatCurrency } from '@/app/constants/states';
+import { formatCurrency } from '@/lib/utils';
 
 interface FormData {
   creditScore: string;
@@ -92,15 +92,15 @@ const Review: React.FC<Props> = ({ data, onSubmit, onBack, onEdit }) => {
           <div className="grid grid-cols-3 gap-4">
             <div>
               <p className="text-sm text-gray-500">Car Loan</p>
-              <p className="font-medium">{formatCurrency(data.monthlyCarLoan || 0)}</p>
+              <p className="font-medium">{formatCurrency(Number(data.monthlyCarLoan) || 0)}</p>
             </div>
             <div>
               <p className="text-sm text-gray-500">Credit Cards</p>
-              <p className="font-medium">{formatCurrency(data.monthlyCreditCard || 0)}</p>
+              <p className="font-medium">{formatCurrency(Number(data.monthlyCreditCard) || 0)}</p>
             </div>
             <div>
               <p className="text-sm text-gray-500">Other Expenses</p>
-              <p className="font-medium">{formatCurrency(data.monthlyOtherExpenses || 0)}</p>
+              <p className="font-medium">{formatCurrency(Number(data.monthlyOtherExpenses) || 0)}</p>
             </div>
             <div className="col-span-3">
               <p className="text-sm text-gray-500">Total Monthly Obligations</p>
@@ -119,7 +119,7 @@ const Review: React.FC<Props> = ({ data, onSubmit, onBack, onEdit }) => {
           <div className="space-y-3">
             <div>
               <p className="text-sm text-gray-500">Purchase Price</p>
-              <p className="font-medium">{formatCurrency(data.purchasePrice)}</p>
+              <p className="font-medium">{formatCurrency(Number(data.purchasePrice))}</p>
             </div>
             {data.propertyAddress && (
               <div>
