@@ -144,16 +144,67 @@ async function main() {
     })
   ));
 
-  // Create a quote request for the first buyer
+  // Create quote requests for testing the lender dashboard
+  for (const buyer of buyers) {
+    // Create multiple requests in different states
+    const states = ['CA', 'NY', 'TX', 'FL'];
+    const statuses = ['PENDING', 'QUOTED', 'ACCEPTED', 'DECLINED'];
+    
+    for (let i = 0; i < 3; i++) {
+      const requestId = uuidv4();
+      const state = states[Math.floor(Math.random() * states.length)];
+      const status = statuses[Math.floor(Math.random() * (i === 0 ? 1 : statuses.length))]; // First one always PENDING
+      
+      await prisma.quoteRequest.create({
+        data: {
+          id: requestId,
+          buyerId: buyer.id,
+          propertyAddress: `${Math.floor(Math.random() * 9999)} ${['Main', 'Oak', 'Maple', 'Cedar'][Math.floor(Math.random() * 4)]} St`,
+          propertyCity: ['San Francisco', 'New York', 'Austin', 'Miami'][Math.floor(Math.random() * 4)],
+          propertyState: state,
+          propertyZipCode: String(Math.floor(Math.random() * 90000) + 10000),
+          purchasePrice: Math.floor(Math.random() * (1000000 - 200000) + 200000),
+          downPaymentAmount: Math.floor(Math.random() * 200000) + 50000,
+          creditScore: Math.floor(Math.random() * (800 - 650) + 650),
+          annualIncome: Math.floor(Math.random() * (200000 - 50000) + 50000),
+          monthlyCarLoan: Math.floor(Math.random() * 500),
+          monthlyCreditCard: Math.floor(Math.random() * 1000),
+          monthlyOtherExpenses: Math.floor(Math.random() * 1000),
+          employmentStatus: 'EMPLOYED',
+          employmentYears: Math.floor(Math.random() * 20) + 1,
+          status
+        }
+      });
+
+      // Add quotes for non-pending requests
+      if (status !== 'PENDING') {
+        await prisma.quote.create({
+          data: {
+            id: uuidv4(),
+            quoteRequestId: requestId,
+            lenderId: lenders[Math.floor(Math.random() * lenders.length)].id,
+            interestRate: 3.5 + Math.random() * 2,
+            loanTerm: [15, 30][Math.floor(Math.random() * 2)],
+            monthlyPayment: Math.floor(Math.random() * 3000) + 1000,
+            status: status === 'ACCEPTED' ? 'ACCEPTED' : 'PENDING',
+            isAIGenerated: Math.random() > 0.5
+          }
+        });
+      }
+    }
+  }
+
+  // Create a quote request for the first buyer (keeping your existing detailed quote request)
   const quoteRequest = await prisma.quoteRequest.create({
     data: {
+      id: uuidv4(),
       buyerId: buyers[0].id,
       propertyAddress: '123 Main St',
       propertyCity: 'San Francisco',
       propertyState: 'CA',
       propertyZipCode: '94105',
       purchasePrice: 750000,
-      downPaymentAmount: 150000, // 20% down payment
+      downPaymentAmount: 150000,
       creditScore: 740,
       annualIncome: 175000,
       monthlyCarLoan: 500,
@@ -164,9 +215,8 @@ async function main() {
     }
   });
 
-  // Create AI conversations and quotes for each lender
+  // Keep your existing AI conversations and quotes creation
   for (const lenderProfile of lenderAIProfiles) {
-    // Create AI conversation
     const conversation = await prisma.aIConversation.create({
       data: {
         id: uuidv4(),
@@ -195,7 +245,6 @@ async function main() {
       }
     });
 
-    // Create quotes
     const quotes = [
       {
         type: 'Conventional 30-Year Fixed',
@@ -219,6 +268,7 @@ async function main() {
       new Promise(resolve => setTimeout(async () => {
         const createdQuote = await prisma.quote.create({
           data: {
+            id: uuidv4(),
             quoteRequestId: quoteRequest.id,
             lenderId: lenderProfile.lenderId,
             interestRate: quote.rate,
@@ -231,14 +281,15 @@ async function main() {
               `Monthly MI: $${quote.monthlyMI.toFixed(2)}\n` +
               `Total Cash Needed: $165,000`
           }
-        })
-        resolve(createdQuote)
-      }, index * 2000)) // 2 second delay between each quote
-    )
+        });
+        resolve(createdQuote);
+      }, index * 2000))
+    );
 
     // Create initial message
     await prisma.message.create({
       data: {
+        id: uuidv4(),
         requestId: quoteRequest.id,
         senderId: lenderProfile.lenderId,
         lenderId: lenderProfile.lenderId,

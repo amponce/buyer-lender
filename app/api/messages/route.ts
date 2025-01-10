@@ -1,27 +1,27 @@
 import { NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { auth } from '@/lib/auth'
 import prisma from '@/lib/prisma'
-
-type QuoteWithLenderId = {
-  lenderId: string
-}
 
 export async function POST(request: Request) {
   try {
-    const session = await getServerSession(authOptions)
+    const session = await auth()
     if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return new NextResponse(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { 'Content-Type': 'application/json' } }
+      )
     }
 
-    const body = await request.json()
-    const { requestId, content, lenderId } = body
+    const { content, requestId, lenderId, isAIProcessed, isOriginalMessage } = await request.json()
 
-    if (!requestId || !content || !lenderId) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+    if (!content || !requestId || !lenderId) {
+      return new NextResponse(
+        JSON.stringify({ error: 'Missing required fields' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      )
     }
 
-    // Verify the user has access to this chat
+    // Verify access to the quote request
     const quoteRequest = await prisma.quoteRequest.findUnique({
       where: { id: requestId },
       include: {
@@ -35,26 +35,22 @@ export async function POST(request: Request) {
     })
 
     if (!quoteRequest) {
-      return NextResponse.json({ error: 'Quote request not found' }, { status: 404 })
+      return new NextResponse(
+        JSON.stringify({ error: 'Quote request not found' }),
+        { status: 404, headers: { 'Content-Type': 'application/json' } }
+      )
     }
 
     // Check if user is either the buyer or the lender
     const isAuthorized = 
-      (session.user.role === 'BUYER' && quoteRequest.buyer.id === session.user.id) || 
+      (session.user.role === 'BUYER' && quoteRequest.buyerId === session.user.id) || 
       (session.user.role === 'LENDER' && session.user.id === lenderId)
 
     if (!isAuthorized) {
-      return NextResponse.json({ error: 'You are not authorized to send messages in this chat' }, { status: 403 })
-    }
-
-    // Verify the lender has a quote for this request if the sender is a buyer
-    if (session.user.role === 'BUYER') {
-      const hasQuoteFromLender = quoteRequest.quotes.some(
-        (quote: QuoteWithLenderId) => quote.lenderId === lenderId
+      return new NextResponse(
+        JSON.stringify({ error: 'You are not authorized to send messages' }),
+        { status: 403, headers: { 'Content-Type': 'application/json' } }
       )
-      if (!hasQuoteFromLender) {
-        return NextResponse.json({ error: 'No quote found from this lender' }, { status: 403 })
-      }
     }
 
     // Create message
@@ -64,14 +60,16 @@ export async function POST(request: Request) {
         senderId: session.user.id,
         lenderId,
         content,
-        isAIGenerated: false,
-        createdAt: new Date()
+        isAIGenerated: false
       }
     })
 
     return NextResponse.json(message)
   } catch (error) {
-    console.error('Error creating message:', error)
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
+    console.error('Error in POST /api/messages:', error)
+    return new NextResponse(
+      JSON.stringify({ error: 'Internal Server Error' }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    )
   }
 } 

@@ -2,7 +2,7 @@
 import React from 'react';
 import { useForm } from 'react-hook-form';
 import InfoTooltip from '@/components/InfoTooltip';
-import { US_STATES } from '@/app/constants/states';
+import { US_STATES } from '@/lib/constants';
 
 interface FormData {
   purchasePrice: string;
@@ -99,8 +99,8 @@ const PropertyInfo: React.FC<Props> = ({ data, updateData, onNext, onBack }) => 
               >
                 <option value="">Select a state</option>
                 {US_STATES.map(state => (
-                  <option key={state.code} value={state.code}>
-                    {state.name}
+                  <option key={state.value} value={state.value}>
+                    {state.label}
                   </option>
                 ))}
               </select>
