@@ -1,6 +1,6 @@
 # Mortgage Quote System
 
-A real-time mortgage quote system where buyers can submit quote requests and receive offers from lenders. Built with Next.js 13, Prisma, SQLite, and Socket.io.
+A real-time mortgage quote system where buyers can submit quote requests and receive offers from lenders. Built with Next.js 15, Prisma, SQLite, and Socket.io.
 
 ## Features
 
