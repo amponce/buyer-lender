@@ -52,7 +52,21 @@ export async function POST(
         loanTerm: quoteData.loanTerm,
         monthlyPayment: quoteData.monthlyPayment,
         additionalNotes: quoteData.additionalNotes,
-        status: 'PENDING'
+        status: 'PENDING',
+        downPayment: quoteData.downPayment,
+        propertyValue: quoteData.propertyValue,
+        loanAmount: quoteData.loanAmount,
+        apr: quoteData.apr || quoteData.interestRate + 0.25,
+        closingCosts: quoteData.closingCosts,
+        pmi: quoteData.pmi,
+        estimatedTaxes: quoteData.estimatedTaxes,
+        estimatedInsurance: quoteData.estimatedInsurance,
+        totalMonthlyPayment: quoteData.totalMonthlyPayment || (
+          quoteData.monthlyPayment + 
+          (quoteData.pmi || 0) + 
+          (quoteData.estimatedTaxes || 0) + 
+          (quoteData.estimatedInsurance || 0)
+        )
       }
     })
 

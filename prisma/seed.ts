@@ -178,16 +178,29 @@ async function main() {
 
       // Add quotes for non-pending requests
       if (status !== 'PENDING') {
+        const isAI = Math.random() > 0.5;
+        const loanTerm = [15, 30][Math.floor(Math.random() * 2)];
+        const interestRate = loanTerm === 30 ? 6.875 : 6.125;
+        const loanAmount = Math.floor(Math.random() * (1000000 - 200000) + 200000);
+        const monthlyRate = interestRate / 100 / 12;
+        const numPayments = loanTerm * 12;
+        const monthlyPI = (loanAmount * monthlyRate * Math.pow(1 + monthlyRate, numPayments)) / (Math.pow(1 + monthlyRate, numPayments) - 1);
+        
         await prisma.quote.create({
           data: {
             id: uuidv4(),
             quoteRequestId: requestId,
             lenderId: lenders[Math.floor(Math.random() * lenders.length)].id,
-            interestRate: 3.5 + Math.random() * 2,
-            loanTerm: [15, 30][Math.floor(Math.random() * 2)],
-            monthlyPayment: Math.floor(Math.random() * 3000) + 1000,
+            interestRate,
+            loanTerm,
+            monthlyPayment: Math.round(monthlyPI),
             status: status === 'ACCEPTED' ? 'ACCEPTED' : 'PENDING',
-            isAIGenerated: Math.random() > 0.5
+            isAIGenerated: isAI,
+            additionalNotes: `${loanTerm}-Year Fixed\n` +
+              `Down Payment: $${(loanAmount * 0.2).toLocaleString()} (20%)\n` +
+              `Monthly P&I: $${monthlyPI.toFixed(2)}\n` +
+              `Monthly MI: $0\n` +
+              `Total Cash Needed: $${(loanAmount * 0.23).toLocaleString()}`
           }
         });
       }
@@ -285,6 +298,9 @@ async function main() {
         resolve(createdQuote);
       }, index * 2000))
     );
+
+    // Create quotes for each viable option with staggered timing
+    await Promise.all(quotePromises);
 
     // Create initial message
     await prisma.message.create({

@@ -217,105 +217,189 @@ export default function BuyerDashboardClient({ initialQuoteRequests }: BuyerDash
               </div>
             ) : (
               <div className="space-y-8">
-                {quoteRequests.map((request) => {
-                  const acceptedQuote = request.quotes.find(q => q.status === 'ACCEPTED')
-                  const pendingQuotes = request.quotes.filter(q => q.status === 'PENDING')
-                  const declinedQuotes = request.quotes.filter(q => q.status === 'DECLINED')
-
-                  return (
-                    <div key={request.id} className="bg-white rounded-lg shadow">
-                      <div className="p-6">
-                      <h3 className="text-lg font-medium text-gray-900 mb-2">
-                      Quote Request - {format(new Date(request.createdAt), 'MM/dd/yyyy')}
-</h3>
-                        <div className="mt-2 grid grid-cols-3 gap-4 text-sm text-gray-500">
-                          <div>
-                            <span className="font-medium">Credit Score:</span> {request.creditScore}
-                          </div>
-                          <div>
-                            <span className="font-medium">Annual Income:</span> ${request.annualIncome.toLocaleString()}
-                          </div>
-                          <div>
-                            <span className="font-medium">Monthly Debt:</span> ${(request.monthlyCarLoan + request.monthlyCreditCard + request.monthlyOtherExpenses).toLocaleString()}
-                          </div>
-                        </div>
-                      </div>
-
-                      {request.quotes.length > 0 && (
-                        <div className="p-6">
-                          {/* Accepted Quote Section */}
-                          {acceptedQuote && (
-                            <div className="mb-6">
-                              <AnimatedQuote
-                                key={acceptedQuote.id}
-                                quote={{ ...acceptedQuote, quoteRequestId: request.id }}
-                                index={0}
-                                onAccept={(quoteId) => handleStatusUpdate(quoteId, 'ACCEPTED')}
-                                onDecline={(quoteId) => handleStatusUpdate(quoteId, 'DECLINED')}
-                                onChat={openChat}
-                                onViewDetails={setSelectedQuoteForDetails}
-                                unreadMessages={unreadMessages[acceptedQuote.lender.id] || 0}
-                              />
-                            </div>
-                          )}
-
-                          {/* Pending Quotes Section */}
-                          {!acceptedQuote && pendingQuotes.length > 0 && (
-                            <div className="mb-6">
-                              <h4 className="text-sm font-medium text-gray-900 mb-4">Pending Quotes</h4>
-                              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                                {pendingQuotes.map((quote, index) => (
-                                  <AnimatedQuote
-                                    key={quote.id}
-                                    quote={{ ...quote, quoteRequestId: request.id }}
-                                    index={index}
-                                    onAccept={(quoteId) => handleStatusUpdate(quoteId, 'ACCEPTED')}
-                                    onDecline={(quoteId) => handleStatusUpdate(quoteId, 'DECLINED')}
-                                    onChat={openChat}
-                                    onViewDetails={setSelectedQuoteForDetails}
-                                    unreadMessages={unreadMessages[quote.lender.id] || 0}
-                                  />
-                                ))}
+                {/* Awaiting Response Section */}
+                {quoteRequests.some(req => req.quotes.length === 0) && (
+                  <div className="mb-8">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Awaiting Responses</h3>
+                    <div className="space-y-4">
+                      {quoteRequests
+                        .filter(req => req.quotes.length === 0)
+                        .map((request) => (
+                          <div key={request.id} className="bg-white rounded-lg shadow border-2 border-primary-100">
+                            <div className="p-6">
+                              <div className="flex justify-between items-start">
+                                <div>
+                                  <h3 className="text-xl font-semibold text-gray-900">
+                                    ${request.purchasePrice.toLocaleString()} - {request.propertyAddress}
+                                  </h3>
+                                  <p className="text-sm text-gray-500 mt-1">
+                                    {request.propertyState}, {request.propertyZipCode}
+                                  </p>
+                                  <p className="text-xs text-primary-600 font-medium mt-2">
+                                    Waiting for lenders to respond • Requested {format(new Date(request.createdAt), 'MM/dd/yyyy')}
+                                  </p>
+                                </div>
+                                <div className="bg-primary-50 px-3 py-1 rounded-full">
+                                  <p className="text-sm font-medium text-primary-600">
+                                    New Request
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="mt-4 grid grid-cols-3 gap-4 text-sm text-gray-500">
+                                <div>
+                                  <span className="font-medium">Credit Score:</span> {request.creditScore}
+                                </div>
+                                <div>
+                                  <span className="font-medium">Annual Income:</span> ${request.annualIncome.toLocaleString()}
+                                </div>
+                                <div>
+                                  <span className="font-medium">Monthly Debt:</span> ${(request.monthlyCarLoan + request.monthlyCreditCard + request.monthlyOtherExpenses).toLocaleString()}
+                                </div>
                               </div>
                             </div>
-                          )}
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
 
-                          {/* Declined Quotes Section */}
-                          {declinedQuotes.length > 0 && (
-                            <div className="mt-8">
-                              <button
-                                onClick={() => setShowDeclinedQuotes(!showDeclinedQuotes)}
-                                className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 mb-4"
-                              >
-                                <span className={`transform transition-transform ${showDeclinedQuotes ? 'rotate-90' : ''}`}>
-                                  ›
-                                </span>
-                                Show {declinedQuotes.length} Declined Quote{declinedQuotes.length !== 1 ? 's' : ''}
-                              </button>
-                              
-                              {showDeclinedQuotes && (
-                                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                                  {declinedQuotes.map((quote, index) => (
+                {/* Active Quotes Section */}
+                {quoteRequests.some(req => req.quotes.length > 0) && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Active Properties</h3>
+                    <div className="space-y-6">
+                      {quoteRequests
+                        .filter(req => req.quotes.length > 0)
+                        .map((request) => {
+                          const acceptedQuote = request.quotes.find(q => q.status === 'ACCEPTED')
+                          const pendingQuotes = request.quotes.filter(q => q.status === 'PENDING')
+                          const declinedQuotes = request.quotes.filter(q => q.status === 'DECLINED')
+
+                          return (
+                            <div key={request.id} className="bg-white rounded-lg shadow">
+                              <div className="p-6 border-b">
+                                <div className="flex justify-between items-start mb-4">
+                                  <div>
+                                    <h3 className="text-xl font-semibold text-gray-900">
+                                      ${request.purchasePrice.toLocaleString()} - {request.propertyAddress}
+                                    </h3>
+                                    <p className="text-sm text-gray-500 mt-1">
+                                      {request.propertyState}, {request.propertyZipCode}
+                                    </p>
+                                    <div className="flex items-center gap-2 mt-2">
+                                      <p className="text-xs text-gray-400">
+                                        Requested {format(new Date(request.createdAt), 'MM/dd/yyyy')}
+                                      </p>
+                                      {acceptedQuote && (
+                                        <span className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full">
+                                          Quote Accepted
+                                        </span>
+                                      )}
+                                      {!acceptedQuote && pendingQuotes.length > 0 && (
+                                        <span className="text-xs bg-primary-50 text-primary-700 px-2 py-0.5 rounded-full">
+                                          {pendingQuotes.length} Pending
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <div className="bg-gray-100 px-3 py-1 rounded-full">
+                                    <p className="text-sm font-medium text-gray-600">
+                                      {request.quotes.length} Quote{request.quotes.length !== 1 ? 's' : ''}
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="mt-4 grid grid-cols-3 gap-4 text-sm text-gray-500">
+                                  <div>
+                                    <span className="font-medium">Credit Score:</span> {request.creditScore}
+                                  </div>
+                                  <div>
+                                    <span className="font-medium">Annual Income:</span> ${request.annualIncome.toLocaleString()}
+                                  </div>
+                                  <div>
+                                    <span className="font-medium">Monthly Debt:</span> ${(request.monthlyCarLoan + request.monthlyCreditCard + request.monthlyOtherExpenses).toLocaleString()}
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="divide-y divide-gray-100">
+                                {/* Accepted Quote Section */}
+                                {acceptedQuote && (
+                                  <div className="p-6">
+                                    <h4 className="text-sm font-medium text-green-600 mb-4">Accepted Quote</h4>
                                     <AnimatedQuote
-                                      key={quote.id}
-                                      quote={{ ...quote, quoteRequestId: request.id }}
-                                      index={index}
+                                      key={acceptedQuote.id}
+                                      quote={{ ...acceptedQuote, quoteRequestId: request.id }}
+                                      index={0}
                                       onAccept={(quoteId) => handleStatusUpdate(quoteId, 'ACCEPTED')}
                                       onDecline={(quoteId) => handleStatusUpdate(quoteId, 'DECLINED')}
                                       onChat={openChat}
                                       onViewDetails={setSelectedQuoteForDetails}
-                                      unreadMessages={unreadMessages[quote.lender.id] || 0}
+                                      unreadMessages={unreadMessages[acceptedQuote.lender.id] || 0}
                                     />
-                                  ))}
-                                </div>
-                              )}
+                                  </div>
+                                )}
+
+                                {/* Pending Quotes Section */}
+                                {!acceptedQuote && pendingQuotes.length > 0 && (
+                                  <div className="p-6">
+                                    <h4 className="text-sm font-medium text-primary-600 mb-4">
+                                      {pendingQuotes.length} Pending Quote{pendingQuotes.length !== 1 ? 's' : ''}
+                                    </h4>
+                                    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                                      {pendingQuotes.map((quote, index) => (
+                                        <AnimatedQuote
+                                          key={quote.id}
+                                          quote={{ ...quote, quoteRequestId: request.id }}
+                                          index={index}
+                                          onAccept={(quoteId) => handleStatusUpdate(quoteId, 'ACCEPTED')}
+                                          onDecline={(quoteId) => handleStatusUpdate(quoteId, 'DECLINED')}
+                                          onChat={openChat}
+                                          onViewDetails={setSelectedQuoteForDetails}
+                                          unreadMessages={unreadMessages[quote.lender.id] || 0}
+                                        />
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Declined Quotes Section */}
+                                {declinedQuotes.length > 0 && (
+                                  <div className="p-6">
+                                    <button
+                                      onClick={() => setShowDeclinedQuotes(!showDeclinedQuotes)}
+                                      className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 mb-4"
+                                    >
+                                      <span className={`transform transition-transform ${showDeclinedQuotes ? 'rotate-90' : ''}`}>
+                                        ›
+                                      </span>
+                                      {declinedQuotes.length} Declined Quote{declinedQuotes.length !== 1 ? 's' : ''}
+                                    </button>
+                                    
+                                    {showDeclinedQuotes && (
+                                      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                                        {declinedQuotes.map((quote, index) => (
+                                          <AnimatedQuote
+                                            key={quote.id}
+                                            quote={{ ...quote, quoteRequestId: request.id }}
+                                            index={index}
+                                            onAccept={(quoteId) => handleStatusUpdate(quoteId, 'ACCEPTED')}
+                                            onDecline={(quoteId) => handleStatusUpdate(quoteId, 'DECLINED')}
+                                            onChat={openChat}
+                                            onViewDetails={setSelectedQuoteForDetails}
+                                            unreadMessages={unreadMessages[quote.lender.id] || 0}
+                                          />
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                          )}
-                        </div>
-                      )}
+                          )
+                        })}
                     </div>
-                  )
-                })}
+                  </div>
+                )}
               </div>
             )}
 

@@ -139,6 +139,17 @@ model Quote {
   isAIGenerated   Boolean     @default(false)
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
+  // New fields for loan details
+  downPayment     Float?
+  propertyValue   Float?
+  loanAmount      Float?
+  apr             Float?
+  closingCosts    Float?
+  pmi             Float?
+  estimatedTaxes  Float?
+  estimatedInsurance Float?
+  totalMonthlyPayment Float?
+  // Relations
   lender          User         @relation("LenderQuotes", fields: [lenderId], references: [id])
   quoteRequest    QuoteRequest @relation(fields: [quoteRequestId], references: [id])
   scheduledCalls  ScheduledCall[]
