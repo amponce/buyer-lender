@@ -3,18 +3,14 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
 import OpenAI from 'openai'
+import type { ChatMessage, ChatRole } from '@/types'
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 })
 
-type ChatMessage = {
-  role: 'system' | 'user' | 'assistant'
-  content: string
-}
-
 type QuoteWithLender = Awaited<ReturnType<typeof prisma.quote.findFirst>>
-type MessageType = Awaited<ReturnType<typeof prisma.message.findFirst>>
+type MessageType = NonNullable<Awaited<ReturnType<typeof prisma.message.findFirst>>>
 
 export async function POST(request: Request) {
   try {
@@ -55,7 +51,7 @@ export async function POST(request: Request) {
 
     const hasAccess =
       quoteRequest.buyerId === session.user.id ||
-      quoteRequest.quotes.some((quote: QuoteWithLender) => quote.lenderId === session.user.id)
+      quoteRequest.quotes.some((quote: QuoteWithLender) => quote?.lenderId === session.user.id)
 
     if (!hasAccess) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -87,10 +83,10 @@ export async function POST(request: Request) {
         }. Be professional, clear, and concise. Provide accurate information about mortgages and the home buying process.`
       },
       ...previousMessages.map((msg: MessageType) => ({
-        role: msg.senderId === session.user.id ? 'user' : 'assistant',
+        role: (msg.senderId === session.user.id ? 'user' : 'assistant') as ChatRole,
         content: msg.content
       })),
-      { role: 'user', content: userMessage }
+      { role: 'user' as ChatRole, content: userMessage }
     ]
 
     // Set up streaming response

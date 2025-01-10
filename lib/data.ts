@@ -1,17 +1,28 @@
 import { PrismaClient } from '@prisma/client'
 import { auth } from './auth'
-import { QuoteRequest } from './types'
+import type { QuoteRequest } from '@/types'
 
 const prisma = new PrismaClient()
 
-export async function getQuoteRequests(): Promise<QuoteRequest[]> {
+export async function getQuoteRequests() {
   const session = await auth()
   if (!session) return []
 
   if (session.user.role === 'LENDER') {
     return prisma.quoteRequest.findMany({
       include: {
-        quotes: true,
+        quotes: {
+          include: {
+            lender: true
+          }
+        },
+        buyer: true,
+        aiConversations: {
+          include: {
+            messages: true,
+            aiProfile: true
+          }
+        }
       },
       orderBy: {
         createdAt: 'desc',
@@ -21,10 +32,21 @@ export async function getQuoteRequests(): Promise<QuoteRequest[]> {
 
   return prisma.quoteRequest.findMany({
     where: {
-      userId: parseInt(session.user.id),
+      buyerId: session.user.id,
     },
     include: {
-      quotes: true,
+      quotes: {
+        include: {
+          lender: true
+        }
+      },
+      buyer: true,
+      aiConversations: {
+        include: {
+          messages: true,
+          aiProfile: true
+        }
+      }
     },
     orderBy: {
       createdAt: 'desc',
@@ -32,14 +54,25 @@ export async function getQuoteRequests(): Promise<QuoteRequest[]> {
   })
 }
 
-export async function getQuoteRequest(id: number): Promise<QuoteRequest | null> {
+export async function getQuoteRequest(id: string) {
   const session = await auth()
   if (!session) return null
 
   return prisma.quoteRequest.findUnique({
     where: { id },
     include: {
-      quotes: true,
+      quotes: {
+        include: {
+          lender: true
+        }
+      },
+      buyer: true,
+      aiConversations: {
+        include: {
+          messages: true,
+          aiProfile: true
+        }
+      }
     },
   })
 } 

@@ -6,14 +6,13 @@ export default async function Home() {
   const session = await auth()
   
   // Redirect authenticated users to their respective dashboards
-  if (session) {
-    if (session.user.role === 'BUYER') {
-      redirect('/buyer-dashboard')
-    } else if (session.user.role === 'LENDER') {
-      redirect('/lender-dashboard')
-    }
+  if (session?.user?.role === 'BUYER') {
+    redirect('/buyer-dashboard')
+  } else if (session?.user?.role === 'LENDER') {
+    redirect('/lender-dashboard')
   }
 
+  // If not authenticated, show the landing page
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">

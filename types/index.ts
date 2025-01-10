@@ -1,28 +1,70 @@
+import { Quote as PrismaQuote, User as PrismaUser, QuoteRequest as PrismaQuoteRequest } from '@prisma/client'
+
 export type QuoteRequestStatus = 'PENDING' | 'IN_REVIEW' | 'QUOTED' | 'COMPLETED'
 export type QuoteStatus = 'PENDING' | 'ACCEPTED' | 'DECLINED'
+
+export interface QuoteWithDetails extends PrismaQuote {
+  lender: PrismaUser;
+  quoteRequest: PrismaQuoteRequest;
+}
+
+export interface BuyerDashboardClientProps {
+  quotes: QuoteWithDetails[];
+  chatHistory: Record<string, number>;
+}
 
 export interface User {
   id: string
   email: string
   role: 'BUYER' | 'LENDER'
+  name?: string
+  company?: string
+  licenseNumber?: string
+  phoneNumber?: string
+  profilePhoto?: string
+  bio?: string
+  isManager?: boolean
+  teamId?: string
+  dateOfBirth?: string
+  address?: string
+  city?: string
+  state?: string
+  zipCode?: string
+  occupation?: string
+  employer?: string
 }
 
 export interface Quote {
-  id: string
-  quoteRequestId: string
-  lenderId: string
-  interestRate: number
-  loanTerm: number
-  monthlyPayment: number
-  additionalNotes?: string
-  status: QuoteStatus
-  createdAt: string
-  updatedAt: string
-  isAIGenerated: boolean
+  id: string;
+  quoteRequestId: string;
+  lenderId: string;
+  interestRate: number;
+  loanTerm: number;
+  monthlyPayment: number;
+  additionalNotes?: string;
+  status: QuoteStatus;
+  createdAt: string;
+  updatedAt: string;
+  isAIGenerated?: boolean;
   lender: {
-    id: string
-    email: string
-  }
+    id: string;
+    email: string;
+    name: string;
+    company: string;
+    licenseNumber: string;
+    phoneNumber: string;
+    profilePhoto?: string;
+    bio: string;
+  };
+  downPayment?: number;
+  propertyValue?: number;
+  loanAmount?: number;
+  apr?: number;
+  closingCosts?: number;
+  pmi?: number;
+  estimatedTaxes?: number;
+  estimatedInsurance?: number;
+  totalMonthlyPayment?: number;
 }
 
 export interface AIConversation {
@@ -43,20 +85,19 @@ export interface AIConversation {
 
 export interface QuoteRequest {
   id: string
-  userId: string
+  buyerId: string
   creditScore: number
   annualIncome: number
-  additionalIncome: number
   monthlyCarLoan: number
   monthlyCreditCard: number
   monthlyOtherExpenses: number
   purchasePrice: number
-  propertyAddress?: string
+  propertyAddress: string
   propertyState: string
   propertyZipCode: string
   status: QuoteRequestStatus
-  createdAt: string
-  updatedAt: string
+  createdAt: Date
+  updatedAt: Date
   quotes: Quote[]
   aiConversations: AIConversation[]
   buyer: {
@@ -135,4 +176,37 @@ export interface LenderProfile {
   }
   rateSheet: string
   isAutopilotActive: boolean
-} 
+}
+
+export type ExtendedQuote = Quote & {
+  downPayment: number;
+  propertyValue: number;
+  loanAmount: number;
+  apr: number;
+  closingCosts: number;
+  pmi: number;
+  estimatedTaxes: number;
+  estimatedInsurance: number;
+  totalMonthlyPayment: number;
+}
+
+export interface ExtendedQuoteRequest extends QuoteRequest {
+  hasAIResponse?: boolean;
+  aiSummary?: any;
+  aiNextSteps?: string;
+  aiStatus?: 'COMPLETED' | 'ACTIVE' | 'TRANSFERRED_TO_LENDER' | 'NO_AI';
+  lastAIMessage?: Message;
+  lastMessage?: Message;
+  hasManualQuote?: boolean;
+  hasAIQuote?: boolean;
+  aiQuote?: Quote;
+  manualQuote?: Quote;
+}
+
+export type ChatRole = 'system' | 'user' | 'assistant'
+
+export interface ChatMessage {
+  role: ChatRole
+  content: string
+}
+

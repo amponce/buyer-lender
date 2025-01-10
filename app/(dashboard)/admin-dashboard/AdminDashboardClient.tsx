@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 import { UserPlusIcon } from '@heroicons/react/24/outline'
+import Link from 'next/link'
+import { signOut } from 'next-auth/react'
 
 interface User {
   id: number
@@ -41,6 +43,20 @@ export default function AdminDashboardClient() {
       <div className="bg-white shadow rounded-lg p-6">
         <h2 className="text-lg font-medium mb-4">Generate Registration Codes</h2>
         <div className="space-y-4">
+          <div className="flex items-center gap-4">
+            <Link
+              href="/profile"
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+            >
+              Edit Profile
+            </Link>
+            <button
+              onClick={() => signOut()}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+            >
+              Sign Out
+            </button>
+          </div>
           <div>
             <button
               onClick={() => generateRegistrationCode('LENDER_TEAM')}

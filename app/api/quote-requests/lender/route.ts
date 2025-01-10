@@ -1,12 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import prisma from '@/lib/prisma'
-import type { QuoteRequest, Quote, Message, AIConversation } from '@/types'
-
-interface ExtendedQuoteRequest extends QuoteRequest {
-  messages: Message[]
-  aiConversations: AIConversation[]
-}
+import type { QuoteRequest, Quote, Message, AIConversation, ExtendedQuoteRequest, QuoteRequestStatus } from '@/types'
+import type { QuoteRequest as PrismaQuoteRequest } from '@prisma/client'
 
 export async function GET(request: NextRequest) {
   try {
@@ -56,7 +52,8 @@ export async function GET(request: NextRequest) {
             lender: {
               select: {
                 id: true,
-                email: true
+                email: true,
+                role: true
               }
             }
           }
@@ -97,33 +94,44 @@ export async function GET(request: NextRequest) {
     })
 
     // Transform the requests to include AI status information
-    const requestsWithAIStatus = requests.map((request: ExtendedQuoteRequest) => {
+    const requestsWithAIStatus = requests.map((request) => {
       const aiConversation = request.aiConversations[0]
       const lastAIMessage = aiConversation?.messages[0]
       const lastMessage = request.messages[0]
-      const aiQuote = request.quotes.find((q: Quote) => q.isAIGenerated)
-      const manualQuote = request.quotes.find((q: Quote) => !q.isAIGenerated)
+      const aiQuote = request.quotes.find((q) => q.isAIGenerated)
+      const manualQuote = request.quotes.find((q) => !q.isAIGenerated)
 
-      return {
+      const transformedRequest = {
         ...request,
+        status: request.status as QuoteRequestStatus,
+        createdAt: request.createdAt.toISOString(),
+        updatedAt: request.updatedAt.toISOString(),
         hasAIResponse: !!aiConversation,
         aiSummary: aiConversation?.summary ? JSON.parse(aiConversation.summary) : null,
         aiNextSteps: aiConversation?.nextSteps,
         aiStatus: aiConversation?.status || 'NO_AI',
-        lastAIMessage: lastAIMessage,
-        lastMessage: lastMessage,
+        lastAIMessage: lastAIMessage ? {
+          ...lastAIMessage,
+          createdAt: lastAIMessage.createdAt.toISOString()
+        } : undefined,
+        lastMessage: lastMessage ? {
+          ...lastMessage,
+          createdAt: lastMessage.createdAt.toISOString()
+        } : undefined,
         hasManualQuote: !!manualQuote,
         hasAIQuote: !!aiQuote,
         aiQuote,
         manualQuote
       }
+
+      return transformedRequest as unknown as ExtendedQuoteRequest
     })
 
     console.log('GET /api/quote-requests/lender - Found requests:', requests.length)
     if (requests.length === 0) {
       console.log('GET /api/quote-requests/lender - No requests found')
     } else {
-      console.log('GET /api/quote-requests/lender - Request IDs:', requests.map((r: ExtendedQuoteRequest) => r.id))
+      console.log('GET /api/quote-requests/lender - Request IDs:', requestsWithAIStatus.map(r => r.id))
     }
     
     return NextResponse.json(requestsWithAIStatus)

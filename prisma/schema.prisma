@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "darwin-arm64"]
 }
 
 datasource db {
@@ -14,15 +15,35 @@ model User {
   role          String         @default("BUYER")
   isManager     Boolean        @default(false)
   teamId        String?
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  messages      Message[]      // Messages sent by this user
-  lenderMessages Message[]     @relation("MessageLender") // Messages where this user is the lender
+  // Common profile fields
+  name          String?        @map("name")
+  phoneNumber   String?        @map("phone_number")
+  profilePhoto  String?        @map("profile_photo")
+  dateOfBirth   String?        @map("date_of_birth")
+  address       String?        @map("address")
+  city          String?        @map("city")
+  state         String?        @map("state")
+  zipCode       String?        @map("zip_code")
+  occupation    String?        @map("occupation")
+  employer      String?        @map("employer")
+  // Lender profile fields
+  company       String?        @map("company")
+  licenseNumber String?        @map("license_number")
+  bio           String?        @map("bio")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+  // Relations
+  messages      Message[]
+  lenderMessages Message[]     @relation("MessageLender")
   quotes        Quote[]        @relation("LenderQuotes")
   quoteRequests QuoteRequest[]
   team          User?          @relation("TeamMembers", fields: [teamId], references: [id])
   members       User[]         @relation("TeamMembers")
-  aiProfile     LenderAIProfile? // Only for lenders
+  aiProfile     LenderAIProfile?
+  buyerCalls    ScheduledCall[] @relation("BuyerCalls")
+  lenderCalls   ScheduledCall[] @relation("LenderCalls")
+
+  @@map("users")
 }
 
 // AI configuration for lenders
@@ -140,4 +161,25 @@ model Message {
   @@index([senderId])
   @@index([lenderId])
   @@index([aiConversationId])
+}
+
+model ScheduledCall {
+  id          String   @id @default(uuid())
+  quoteId     String
+  buyerId     String
+  lenderId    String
+  scheduledAt DateTime
+  memo        String?
+  status      String   @default("SCHEDULED") // SCHEDULED, COMPLETED, CANCELLED
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  quote       Quote    @relation(fields: [quoteId], references: [id])
+  buyer       User     @relation("BuyerCalls", fields: [buyerId], references: [id])
+  lender      User     @relation("LenderCalls", fields: [lenderId], references: [id])
+
+  @@index([buyerId])
+  @@index([lenderId])
+  @@index([quoteId])
 }

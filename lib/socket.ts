@@ -1,26 +1,26 @@
 import { Socket } from 'socket.io-client'
 import io from 'socket.io-client'
+import type { Message, QuoteRequest } from '@/types'
 
-interface Message {
-  id: string
-  senderId: string
-  content: string
-  timestamp: Date
+// Type guard for QuoteRequest
+const isQuoteRequest = (data: any): data is QuoteRequest => {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    typeof data.id === 'string' &&
+    typeof data.buyerId === 'string' &&
+    typeof data.creditScore === 'number' &&
+    typeof data.annualIncome === 'number' &&
+    typeof data.purchasePrice === 'number' &&
+    typeof data.propertyState === 'string' &&
+    Array.isArray(data.quotes) &&
+    Array.isArray(data.aiConversations)
+  )
 }
 
-interface QuoteRequest {
-  id: string
-  userId: string
-  creditScore: number
-  annualIncome: number
-  purchasePrice: number
-  propertyState: string
-  status: string
-}
+let socket: ReturnType<typeof io> | null = null
 
-let socket: typeof Socket | null = null
-
-export const initializeSocket = (): typeof Socket | null => {
+export const initializeSocket = (): ReturnType<typeof io> | null => {
   if (typeof window === 'undefined') return null
 
   if (!socket) {
@@ -43,7 +43,7 @@ export const initializeSocket = (): typeof Socket | null => {
   return socket
 }
 
-export const getSocket = (): typeof Socket | null => {
+export const getSocket = (): ReturnType<typeof io> | null => {
   return socket
 }
 
@@ -64,7 +64,13 @@ export const onNewMessage = (callback: (message: Message) => void): void => {
 
 export const onNewQuoteRequest = (callback: (quoteRequest: QuoteRequest) => void): void => {
   if (!socket) return
-  socket.on('quote_request_received', callback)
+  socket.on('quote_request_received', (data: any) => {
+    if (isQuoteRequest(data)) {
+      callback(data)
+    } else {
+      console.error('Received invalid quote request data:', data)
+    }
+  })
 }
 
 export const onStatusUpdate = (callback: (data: { requestId: string, status: string }) => void): void => {

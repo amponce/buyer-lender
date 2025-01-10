@@ -33,7 +33,8 @@ export async function GET(request: NextRequest) {
             lender: {
               select: {
                 id: true,
-                email: true
+                email: true,
+                role: true
               }
             }
           }

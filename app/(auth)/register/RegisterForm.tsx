@@ -43,20 +43,24 @@ export default function RegisterForm() {
         body: JSON.stringify({
           ...data,
           role: userType,
-          isManager: userType === 'LENDER_TEAM'
+          isManager: userType === 'LENDER_TEAM',
         }),
-      })
-
+      });
+  
       if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.message)
+        const errorData = await response.json();
+        throw new Error(errorData.message);
       }
-
-      router.push('/login?registered=true')
+  
+      router.push('/login?registered=true');
     } catch (error) {
-      setError(error.message || 'An error occurred during registration')
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError('An unexpected error occurred during registration');
+      }
     }
-  }
+  };
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="mt-8 space-y-6">

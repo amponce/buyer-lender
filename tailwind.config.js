@@ -15,16 +15,20 @@ module.exports = {
   				'300': '#7dd3fc',
   				'400': '#38bdf8',
   				'500': '#0ea5e9',
-  				'600': '#0284c7',
-  				'700': '#0369a1',
+  				'600': '#2563eb',
+  				'700': '#1d4ed8',
   				'800': '#075985',
   				'900': '#0c4a6e',
   				'950': '#082f49',
   				DEFAULT: 'hsl(var(--primary))',
+  				600: '#2563eb',
+  				700: '#1d4ed8',
   				foreground: 'hsl(var(--primary-foreground))'
   			},
   			background: 'hsl(var(--background))',
   			foreground: 'hsl(var(--foreground))',
+  			600: '#2563eb',
+  			700: '#1d4ed8',
   			card: {
   				DEFAULT: 'hsl(var(--card))',
   				foreground: 'hsl(var(--card-foreground))'

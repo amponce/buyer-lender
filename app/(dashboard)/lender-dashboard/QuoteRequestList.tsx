@@ -135,7 +135,7 @@ export default function QuoteRequestList() {
           onClose={() => setIsChatOpen(false)}
           currentUserId={session?.user?.id || ''}
           currentUserType="lender"
-          otherUserId={selectedRequest.userId}
+          otherUserId={selectedRequest.buyerId}
           requestId={selectedRequest.id}
         />
       )}
