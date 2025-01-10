@@ -23,7 +23,7 @@ export async function POST(
     const { id: quoteRequestId } = await context.params
 
     // Update or create skip entry
-    const skipEntry = await prisma.skipped_quotes.upsert({
+    const skipEntry = await prisma.skippedQuotes.upsert({
       where: {
         lenderId_quoteRequestId: {
           lenderId: session.user.id,
